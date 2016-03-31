@@ -73,14 +73,16 @@ def register():
         blender = reload_mod('blender')
         gui = reload_mod('gui')
         async_loop = reload_mod('async_loop')
+        asset_engine = reload_mod('asset_engine')
     else:
-        from . import blender, gui, async_loop
+        from . import blender, gui, async_loop, asset_engine
 
     async_loop.setup_asyncio_executor()
     async_loop.register()
 
     blender.register()
     gui.register()
+    asset_engine.register()
 
 
 def unregister():
