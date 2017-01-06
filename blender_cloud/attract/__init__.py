@@ -204,7 +204,7 @@ class ToolsPanel(Panel):
                 if bpy.ops.attract.submit_selected.poll():
                     row.operator('attract.submit_selected',
                                  text='Submit %s' % noun,
-                                 icon='MOVE_UP_VEC')
+                                 icon='TRIA_UP')
                 else:
                     row.operator(ATTRACT_OT_submit_all.bl_idname)
                 row.operator(AttractShotFetchUpdate.bl_idname,
