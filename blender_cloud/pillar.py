@@ -840,6 +840,32 @@ class PillarOperatorMixin:
                     'Please subscribe to the blender cloud at https://cloud.blender.org/join')
 
 
+class AuthenticatedPillarOperatorMixin(PillarOperatorMixin):
+    """Checks credentials, to be used at the start of async_execute().
+
+    Sets self.user_id to the current user's ID, and self.db_user to the user info dict,
+    if authentication was succesful; sets both to None if not.
+    """
+
+    async def authenticate(self, context) -> bool:
+        from . import pillar
+
+        self._log.info('Checking credentials')
+        self.user_id = None
+        self.db_user = None
+        try:
+            self.db_user = await self.check_credentials(context, ())
+        except pillar.UserNotLoggedInError as ex:
+            self._log.info('Not logged in error raised: %s', ex)
+            self.report({'ERROR'}, 'Please log in on Blender ID first.')
+            self.quit()
+            return False
+
+        self.user_id = self.db_user['_id']
+        return True
+
+
+
 async def find_or_create_node(where: dict,
                               additional_create_props: dict = None,
                               projection: dict = None,

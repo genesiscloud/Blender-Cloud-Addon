@@ -29,7 +29,8 @@ from bpy.types import AddonPreferences, Operator, WindowManager, Scene, Property
 from bpy.props import StringProperty, EnumProperty, PointerProperty, BoolProperty
 import rna_prop_ui
 
-from . import pillar, async_loop
+from . import pillar, async_loop, flamenco
+from .utils import pyside_cache, redraw
 
 PILLAR_WEB_SERVER_URL = 'https://cloud.blender.org/'
 # PILLAR_WEB_SERVER_URL = 'http://pillar-web:5001/'
@@ -39,39 +40,6 @@ ADDON_NAME = 'blender_cloud'
 log = logging.getLogger(__name__)
 
 icons = None
-
-
-def redraw(self, context):
-    context.area.tag_redraw()
-
-
-def pyside_cache(propname):
-
-    if callable(propname):
-        raise TypeError('Usage: pyside_cache("property_name")')
-
-    def decorator(wrapped):
-        """Stores the result of the callable in Python-managed memory.
-
-        This is to work around the warning at
-        https://www.blender.org/api/blender_python_api_master/bpy.props.html#bpy.props.EnumProperty
-        """
-
-        import functools
-
-        @functools.wraps(wrapped)
-        # We can't use (*args, **kwargs), because EnumProperty explicitly checks
-        # for the number of fixed positional arguments.
-        def wrapper(self, context):
-            result = None
-            try:
-                result = wrapped(self, context)
-                return result
-            finally:
-                rna_type, rna_info = getattr(self.bl_rna, propname)
-                rna_info['_cached_result'] = result
-        return wrapper
-    return decorator
 
 
 @pyside_cache('version')
@@ -207,6 +175,16 @@ class BlenderCloudPreferences(AddonPreferences):
         subtype='DIR_PATH',
         default='//../')
 
+    flamenco_manager = PointerProperty(type=flamenco.FlamencoManagerGroup)
+    # TODO: before making Flamenco public, change the defaults to something less Institute-specific.
+    # NOTE: The assumption is that the workers can also find the files in the same path.
+    #       This assumption is true for the Blender Institute, but we should allow other setups too.
+    flamenco_job_file_path = StringProperty(
+        name='Job file path',
+        description='Path where to store job files',
+        subtype='DIR_PATH',
+        default='/render/_flamenco/storage')
+
     def draw(self, context):
         import textwrap
 
@@ -291,6 +269,10 @@ class BlenderCloudPreferences(AddonPreferences):
         attract_box = layout.box()
         self.draw_attract_buttons(attract_box, self.attract_project)
 
+        # Flamenco stuff
+        flamenco_box = layout.box()
+        self.draw_flamenco_buttons(flamenco_box, self.flamenco_manager)
+
     def draw_subscribe_button(self, layout):
         layout.operator('pillar.subscribe', icon='WORLD')
 
@@ -348,6 +330,35 @@ class BlenderCloudPreferences(AddonPreferences):
             row_buttons.label('Fetching available projects.')
 
         attract_box.prop(self, 'attract_project_local_path')
+
+    def draw_flamenco_buttons(self, flamenco_box, bcp: flamenco.FlamencoManagerGroup):
+        flamenco_row = flamenco_box.row(align=True)
+        flamenco_row.label('Flamenco', icon_value=icon('CLOUD'))
+
+        flamenco_row.enabled = bcp.status in {'NONE', 'IDLE'}
+        row_buttons = flamenco_row.row(align=True)
+
+        if bcp.status in {'NONE', 'IDLE'}:
+            if not bcp.available_managers or not bcp.manager:
+                row_buttons.operator('flamenco.managers',
+                                     text='Find Flamenco Managers',
+                                     icon='FILE_REFRESH')
+            else:
+                row_buttons.prop(bcp, 'manager', text='Manager')
+                row_buttons.operator('flamenco.managers',
+                                     text='',
+                                     icon='FILE_REFRESH')
+        else:
+            row_buttons.label('Fetching available managers.')
+
+        # TODO: make a reusable way to select projects, and use that for Attract and Flamenco.
+        note_box = flamenco_box.column(align=True)
+        note_box.label('NOTE: For now, Flamenco uses the same project as Attract.')
+        note_box.label('This will change in a future version of the add-on.')
+
+        flamenco_box.prop(self, 'flamenco_job_file_path')
+        note_box = flamenco_box.column(align=True)
+        note_box.label('NOTE: Flamenco assumes the workers can use this path too.')
 
 
 class PillarCredentialsUpdate(pillar.PillarOperatorMixin,
@@ -414,7 +425,7 @@ class PILLAR_OT_subscribe(Operator):
 
 
 class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
-                         pillar.PillarOperatorMixin,
+                         pillar.AuthenticatedPillarOperatorMixin,
                          Operator):
     """Fetches the projects available to the user"""
     bl_idname = 'pillar.projects'
@@ -424,27 +435,20 @@ class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
     _log = logging.getLogger('bpy.ops.%s' % bl_idname)
 
     async def async_execute(self, context):
+        if not await self.authenticate(context):
+            return
+
         import pillarsdk
         from .pillar import pillar_call
 
-        self._log.info('Checking credentials')
-        try:
-            db_user = await self.check_credentials(context, ())
-        except pillar.UserNotLoggedInError as ex:
-            self._log.info('Not logged in error raised: %s', ex)
-            self.report({'ERROR'}, 'Please log in on Blender ID first.')
-            self.quit()
-            return
-
-        user_id = db_user['_id']
-        self.log.info('Going to fetch projects for user %s', user_id)
+        self.log.info('Going to fetch projects for user %s', self.user_id)
 
         preferences().attract_project.status = 'FETCHING'
 
         # Get all projects, except the home project.
         projects_user = await pillar_call(
             pillarsdk.Project.all,
-            {'where': {'user': user_id,
+            {'where': {'user': self.user_id,
                        'category': {'$ne': 'home'}},
              'sort': '-_created',
              'projection': {'_id': True,
@@ -453,8 +457,8 @@ class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
 
         projects_shared = await pillar_call(
             pillarsdk.Project.all,
-            {'where': {'user': {'$ne': user_id},
-                       'permissions.groups.group': {'$in': db_user.groups}},
+            {'where': {'user': {'$ne': self.user_id},
+                       'permissions.groups.group': {'$in': self.db_user.groups}},
              'sort': '-_created',
              'projection': {'_id': True,
                             'name': True},
