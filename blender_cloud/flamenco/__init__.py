@@ -238,5 +238,11 @@ def unregister():
     bpy.types.RENDER_PT_render.remove(draw_render_button)
     bpy.utils.unregister_module(__name__)
 
-    wm = bpy.types.WindowManager
-    del wm.flamenco_render_chunk_size
+    try:
+        del bpy.types.Scene.flamenco_render_chunk_size
+    except AttributeError:
+        pass
+    try:
+        del bpy.types.Scene.flamenco_render_frame_range
+    except AttributeError:
+        pass
