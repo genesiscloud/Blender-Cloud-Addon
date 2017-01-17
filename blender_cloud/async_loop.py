@@ -39,9 +39,18 @@ def setup_asyncio_executor():
     calls that could be performed in parallel are queued, and thus we can
     reliably cancel them.
     """
+    import sys
 
     executor = concurrent.futures.ThreadPoolExecutor()
-    loop = asyncio.get_event_loop()
+
+    if sys.platform == 'win32':
+        # On Windows, the default event loop is SelectorEventLoop, which does
+        # not support subprocesses. ProactorEventLoop should be used instead.
+        # Source: https://docs.python.org/3/library/asyncio-subprocess.html
+        loop = asyncio.ProactorEventLoop()
+        asyncio.set_event_loop(loop)
+    else:
+        loop = asyncio.get_event_loop()
     loop.set_default_executor(executor)
     # loop.set_debug(True)
 
