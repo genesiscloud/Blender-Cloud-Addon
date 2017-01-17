@@ -181,7 +181,7 @@ class BlenderCloudPreferences(AddonPreferences):
     #       This assumption is true for the Blender Institute, but we should allow other setups too.
     flamenco_job_file_path = StringProperty(
         name='Job file path',
-        description='Path where to store job files',
+        description='Path where to store job files, should be accesible for Workers too',
         subtype='DIR_PATH',
         default='/render/_flamenco/storage')
 
@@ -351,14 +351,15 @@ class BlenderCloudPreferences(AddonPreferences):
         else:
             row_buttons.label('Fetching available managers.')
 
+        path_box = flamenco_box.row(align=True)
+        path_box.prop(self, 'flamenco_job_file_path')
+        path_box.operator('flamenco.open_job_file_path', text='', icon='DISK_DRIVE')
+
         # TODO: make a reusable way to select projects, and use that for Attract and Flamenco.
         note_box = flamenco_box.column(align=True)
         note_box.label('NOTE: For now, Flamenco uses the same project as Attract.')
         note_box.label('This will change in a future version of the add-on.')
 
-        flamenco_box.prop(self, 'flamenco_job_file_path')
-        note_box = flamenco_box.column(align=True)
-        note_box.label('NOTE: Flamenco assumes the workers can use this path too.')
 
 
 class PillarCredentialsUpdate(pillar.PillarOperatorMixin,

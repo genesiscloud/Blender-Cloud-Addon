@@ -20,7 +20,10 @@
 
 The preferences are managed blender.py, the rest of the Flamenco-specific stuff is here.
 """
+
 import logging
+from pathlib import Path
+import typing
 
 import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
@@ -116,6 +119,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
     """Performs a Blender render on Flamenco."""
     bl_idname = 'flamenco.render'
     bl_label = 'Render on Flamenco'
+    bl_description = __doc__.rstrip('.')
 
     stop_upon_exception = True
     _log = logging.getLogger('bpy.ops.%s' % bl_idname)
@@ -124,40 +128,154 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         if not await self.authenticate(context):
             return
 
-        import os.path
-        from ..blender import preferences
         from pillarsdk import exceptions as sdk_exceptions
+        from ..blender import preferences
 
+        filepath = Path(context.blend_data.filepath)
+
+        # BAM-pack the files to the destination directory.
+        outfile, missing_sources = await self.bam_pack(filepath)
+        if not outfile:
+            return
+
+        # Create the job at Flamenco Server.
         prefs = preferences()
         scene = context.scene
-
+        settings = {"blender_cmd": "{blender}",
+                    "chunk_size": scene.flamenco_render_chunk_size,
+                    "filepath": str(outfile),
+                    "frames": scene.flamenco_render_frame_range}
         try:
-            await create_job(self.user_id,
-                             prefs.attract_project.project,
-                             prefs.flamenco_manager.manager,
-                             'blender-render',
-                             {
-                                 "blender_cmd": "{blender}",
-                                 "chunk_size": scene.flamenco_render_chunk_size,
-                                 "filepath": context.blend_data.filepath,
-                                 "frames": scene.flamenco_render_frame_range
-                             },
-                             'Render %s' % os.path.basename(context.blend_data.filepath))
+            job_info = await create_job(self.user_id,
+                                        prefs.attract_project.project,
+                                        prefs.flamenco_manager.manager,
+                                        'blender-render',
+                                        settings,
+                                        'Render %s' % filepath.name)
         except sdk_exceptions.ResourceInvalid as ex:
             self.report({'ERROR'}, 'Error creating Flamenco job: %s' % ex)
+            self.quit()
+            return
+
+        # Store the job ID in a file in the output dir.
+        with open(str(outfile.parent / 'jobinfo.json'), 'w', encoding='utf8') as outfile:
+            import json
+
+            job_info['missing_files'] = [str(mf) for mf in missing_sources]
+            json.dump(job_info, outfile, sort_keys=True, indent=4)
+
+        # Do a final report.
+        if missing_sources:
+            names = (ms.name for ms in missing_sources)
+            self.report({'WARNING'}, 'Flamenco job created with missing files: %s' %
+                        '; '.join(names))
         else:
             self.report({'INFO'}, 'Flamenco job created.')
         self.quit()
+
+    async def bam_pack(self, filepath: Path) -> (typing.Optional[Path], typing.List[Path]):
+        """BAM-packs the blendfile to the destination directory.
+
+        Returns the path of the destination blend file.
+
+        :param filepath: the blend file to pack (i.e. the current blend file)
+        :returns: the destination blend file, or None if there were errors BAM-packing,
+            and a list of missing paths.
+        """
+
+        from datetime import datetime
+        from ..blender import preferences
+        from . import bam_interface
+
+        prefs = preferences()
+
+        # Create a unique directory that is still more or less identifyable.
+        # This should work better than a random ID.
+        # BAM doesn't like output directories that end in '.blend'.
+        unique_dir = '%s-%s-%s' % (datetime.now().isoformat('-').replace(':', ''),
+                                   self.db_user['username'],
+                                   filepath.name.replace('.blend', ''))
+        outdir = Path(prefs.flamenco_job_file_path) / unique_dir
+        outfile = outdir / filepath.name
+
+        try:
+            outdir.mkdir(parents=True)
+        except Exception as ex:
+            self.log.exception('Unable to create output path %s', outdir)
+            self.report({'ERROR'}, 'Unable to create output path: %s' % ex)
+            self.quit()
+            return None, []
+
+        try:
+            missing_sources = await bam_interface.bam_copy(filepath, outfile)
+        except bam_interface.CommandExecutionError as ex:
+            self.log.exception('Unable to execute BAM pack')
+            self.report({'ERROR'}, 'Unable to execute BAM pack: %s' % ex)
+            self.quit()
+            return None, []
+
+        return outfile, missing_sources
 
 
 class FLAMENCO_OT_scene_to_frame_range(Operator):
     """Sets the scene frame range as the Flamenco render frame range."""
     bl_idname = 'flamenco.scene_to_frame_range'
     bl_label = 'Sets the scene frame range as the Flamenco render frame range'
+    bl_description = __doc__.rstrip('.')
 
     def execute(self, context):
         s = context.scene
         s.flamenco_render_frame_range = '%i-%i' % (s.frame_start, s.frame_end)
+        return {'FINISHED'}
+
+
+class FLAMENCO_OT_copy_files(Operator,
+                             async_loop.AsyncModalOperatorMixin):
+    """Uses BAM to copy the current blendfile + dependencies to the target directory."""
+    bl_idname = 'flamenco.copy_files'
+    bl_label = 'Copy files to target'
+    bl_description = __doc__.rstrip('.')
+
+    stop_upon_exception = True
+
+    async def async_execute(self, context):
+        from pathlib import Path
+        from . import bam_interface
+        from ..blender import preferences
+
+        missing_sources = await bam_interface.bam_copy(
+            Path(context.blend_data.filepath),
+            Path(preferences().flamenco_job_file_path),
+        )
+
+        if missing_sources:
+            names = (ms.name for ms in missing_sources)
+            self.report({'ERROR'}, 'Missing source files: %s' % '; '.join(names))
+
+        self.quit()
+
+
+class FLAMENCO_OT_open_job_file_path(Operator):
+    """Opens the Flamenco job storage path in a file explorer."""
+    bl_idname = 'flamenco.open_job_file_path'
+    bl_label = 'Open in file explorer'
+    bl_description = __doc__.rstrip('.')
+
+    def execute(self, context):
+        import platform
+        import subprocess
+        import os
+
+        from ..blender import preferences
+
+        path = preferences().flamenco_job_file_path
+        if platform.system() == "Windows":
+            os.startfile(path)
+        elif platform.system() == "Darwin":
+            subprocess.Popen(["open", path])
+        else:
+            subprocess.Popen(["xdg-open", path])
+
         return {'FINISHED'}
 
 
@@ -168,8 +286,8 @@ async def create_job(user_id: str,
                      job_settings: dict,
                      job_name: str = None,
                      *,
-                     job_description: str = None) -> str:
-    """Creates a render job at Flamenco Server, returning the job ID."""
+                     job_description: str = None) -> dict:
+    """Creates a render job at Flamenco Server, returning the job object as dictionary."""
 
     import json
     from .sdk import Job
@@ -195,23 +313,38 @@ async def create_job(user_id: str,
     await pillar_call(job.create)
 
     log.info('Job created succesfully: %s', job._id)
-    return job._id
+    return job.to_dict()
 
 
-def draw_render_button(self, context):
-    layout = self.layout
+class FLAMENCO_PT_render(bpy.types.Panel):
+    bl_label = "Flamenco Render"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "render"
+    bl_options = {'DEFAULT_CLOSED'}
 
-    from ..blender import icon
+    def draw(self, context):
+        layout = self.layout
 
-    flamenco_box = layout.box()
-    flamenco_box.label('Flamenco', icon_value=icon('CLOUD'))
-    flamenco_box.prop(context.scene, 'flamenco_render_chunk_size')
+        from ..blender import preferences
 
-    frange_row = flamenco_box.row(align=True)
-    frange_row.prop(context.scene, 'flamenco_render_frame_range')
-    frange_row.operator('flamenco.scene_to_frame_range', text='', icon='ARROW_LEFTRIGHT')
+        layout.prop(context.scene, 'flamenco_render_chunk_size')
 
-    flamenco_box.operator('flamenco.render', text='Render on Flamenco', icon='RENDER_ANIMATION')
+        labeled_row = layout.split(0.2, align=True)
+        labeled_row.label('Frame range:')
+        prop_btn_row = labeled_row.row(align=True)
+        prop_btn_row.prop(context.scene, 'flamenco_render_frame_range', text='')
+        prop_btn_row.operator('flamenco.scene_to_frame_range', text='', icon='ARROW_LEFTRIGHT')
+
+        labeled_row = layout.split(0.2, align=True)
+        labeled_row.label('Storage:')
+        prop_btn_row = labeled_row.row(align=True)
+        prop_btn_row.label(preferences().flamenco_job_file_path)
+        prop_btn_row.operator(FLAMENCO_OT_open_job_file_path.bl_idname, text='', icon='DISK_DRIVE')
+
+        layout.operator(FLAMENCO_OT_render.bl_idname,
+                              text='Render on Flamenco',
+                              icon='RENDER_ANIMATION')
 
 
 def register():
@@ -219,6 +352,9 @@ def register():
     bpy.utils.register_class(FLAMENCO_OT_fmanagers)
     bpy.utils.register_class(FLAMENCO_OT_render)
     bpy.utils.register_class(FLAMENCO_OT_scene_to_frame_range)
+    bpy.utils.register_class(FLAMENCO_OT_copy_files)
+    bpy.utils.register_class(FLAMENCO_OT_open_job_file_path)
+    bpy.utils.register_class(FLAMENCO_PT_render)
 
     scene = bpy.types.Scene
     scene.flamenco_render_chunk_size = IntProperty(
@@ -231,11 +367,7 @@ def register():
         description='Frames to render, in "printer range" notation'
     )
 
-    bpy.types.RENDER_PT_render.append(draw_render_button)
-
-
 def unregister():
-    bpy.types.RENDER_PT_render.remove(draw_render_button)
     bpy.utils.unregister_module(__name__)
 
     try:
