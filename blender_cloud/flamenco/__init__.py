@@ -149,9 +149,10 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             job_info = await create_job(self.user_id,
                                         prefs.attract_project.project,
                                         prefs.flamenco_manager.manager,
-                                        'blender-render',
+                                        scene.flamenco_render_job_type,
                                         settings,
-                                        'Render %s' % filepath.name)
+                                        'Render %s' % filepath.name,
+                                        priority=scene.flamenco_render_job_priority)
         except sdk_exceptions.ResourceInvalid as ex:
             self.report({'ERROR'}, 'Error creating Flamenco job: %s' % ex)
             self.quit()
@@ -286,6 +287,7 @@ async def create_job(user_id: str,
                      job_settings: dict,
                      job_name: str = None,
                      *,
+                     priority: int = 50,
                      job_description: str = None) -> dict:
     """Creates a render job at Flamenco Server, returning the job object as dictionary."""
 
@@ -295,7 +297,7 @@ async def create_job(user_id: str,
 
     job_attrs = {
         'status': 'queued',
-        'priority': 50,
+        'priority': priority,
         'name': job_name,
         'settings': job_settings,
         'job_type': job_type,
@@ -328,7 +330,12 @@ class FLAMENCO_PT_render(bpy.types.Panel):
 
         from ..blender import preferences
 
+        layout.prop(context.scene, 'flamenco_render_job_priority')
         layout.prop(context.scene, 'flamenco_render_chunk_size')
+
+        labeled_row = layout.split(0.2, align=True)
+        labeled_row.label('Job type:')
+        labeled_row.prop(context.scene, 'flamenco_render_job_type', text='')
 
         labeled_row = layout.split(0.2, align=True)
         labeled_row.label('Frame range:')
@@ -343,8 +350,8 @@ class FLAMENCO_PT_render(bpy.types.Panel):
         prop_btn_row.operator(FLAMENCO_OT_open_job_file_path.bl_idname, text='', icon='DISK_DRIVE')
 
         layout.operator(FLAMENCO_OT_render.bl_idname,
-                              text='Render on Flamenco',
-                              icon='RENDER_ANIMATION')
+                        text='Render on Flamenco',
+                        icon='RENDER_ANIMATION')
 
 
 def register():
@@ -366,6 +373,21 @@ def register():
         name='Frame range',
         description='Frames to render, in "printer range" notation'
     )
+    scene.flamenco_render_job_type = EnumProperty(
+        name='Job type',
+        items=[
+            ('blender-render', 'Simple Blender render', 'Not tiled, not resumable, just render'),
+        ],
+        description='Flamenco render job type',
+    )
+    scene.flamenco_render_job_priority = IntProperty(
+        name='Job priority',
+        min=0,
+        default=50,
+        max=100,
+        description='Higher numbers mean higher priority'
+    )
+
 
 def unregister():
     bpy.utils.unregister_module(__name__)
@@ -376,5 +398,13 @@ def unregister():
         pass
     try:
         del bpy.types.Scene.flamenco_render_frame_range
+    except AttributeError:
+        pass
+    try:
+        del bpy.types.Scene.flamenco_render_job_type
+    except AttributeError:
+        pass
+    try:
+        del bpy.types.Scene.flamenco_render_job_priority
     except AttributeError:
         pass
