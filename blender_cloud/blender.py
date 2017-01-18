@@ -26,7 +26,7 @@ import os.path
 
 import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
-from bpy.props import StringProperty, EnumProperty, PointerProperty, BoolProperty
+from bpy.props import StringProperty, EnumProperty, PointerProperty, BoolProperty, IntProperty
 import rna_prop_ui
 
 from . import pillar, async_loop, flamenco
@@ -178,12 +178,28 @@ class BlenderCloudPreferences(AddonPreferences):
     flamenco_manager = PointerProperty(type=flamenco.FlamencoManagerGroup)
     # TODO: before making Flamenco public, change the defaults to something less Institute-specific.
     # NOTE: The assumption is that the workers can also find the files in the same path.
-    #       This assumption is true for the Blender Institute, but we should allow other setups too.
+    #       This assumption is true for the Blender Institute.
     flamenco_job_file_path = StringProperty(
         name='Job file path',
         description='Path where to store job files, should be accesible for Workers too',
         subtype='DIR_PATH',
         default='/render/_flamenco/storage')
+
+    # TODO: before making Flamenco public, change the defaults to something less Institute-specific.
+    flamenco_job_output_path = StringProperty(
+        name='Job output path',
+        description='Path where to store output files, should be accessible for Workers',
+        subtype='DIR_PATH',
+        default='/render/_flamenco/output')
+    flamenco_job_output_strip_components = IntProperty(
+        name='Job output path strip components',
+        description='The final output path comprises of the job output path, and the blend file '
+                    'path relative to the project with this many path components stripped off '
+                    'the front',
+        min=0,
+        default=0,
+        soft_max=4,
+    )
 
     def draw(self, context):
         import textwrap
@@ -271,7 +287,7 @@ class BlenderCloudPreferences(AddonPreferences):
 
         # Flamenco stuff
         flamenco_box = layout.box()
-        self.draw_flamenco_buttons(flamenco_box, self.flamenco_manager)
+        self.draw_flamenco_buttons(flamenco_box, self.flamenco_manager, context)
 
     def draw_subscribe_button(self, layout):
         layout.operator('pillar.subscribe', icon='WORLD')
@@ -331,7 +347,7 @@ class BlenderCloudPreferences(AddonPreferences):
 
         attract_box.prop(self, 'attract_project_local_path')
 
-    def draw_flamenco_buttons(self, flamenco_box, bcp: flamenco.FlamencoManagerGroup):
+    def draw_flamenco_buttons(self, flamenco_box, bcp: flamenco.FlamencoManagerGroup, context):
         flamenco_row = flamenco_box.row(align=True)
         flamenco_row.label('Flamenco', icon_value=icon('CLOUD'))
 
@@ -353,13 +369,30 @@ class BlenderCloudPreferences(AddonPreferences):
 
         path_box = flamenco_box.row(align=True)
         path_box.prop(self, 'flamenco_job_file_path')
-        path_box.operator('flamenco.open_job_file_path', text='', icon='DISK_DRIVE')
+        props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
+        props.path = self.flamenco_job_file_path
+
+        job_output_box = flamenco_box.column(align=True)
+        path_box = job_output_box.row(align=True)
+        path_box.prop(self, 'flamenco_job_output_path')
+        props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
+        props.path = self.flamenco_job_output_path
+
+        job_output_box.prop(self, 'flamenco_job_output_strip_components',
+                            text='Strip components')
+
+        from .flamenco import render_output_path
+
+        path_box = job_output_box.row(align=True)
+        output_path = render_output_path(context)
+        path_box.label(str(output_path))
+        props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
+        props.path = str(output_path.parent)
 
         # TODO: make a reusable way to select projects, and use that for Attract and Flamenco.
         note_box = flamenco_box.column(align=True)
         note_box.label('NOTE: For now, Flamenco uses the same project as Attract.')
         note_box.label('This will change in a future version of the add-on.')
-
 
 
 class PillarCredentialsUpdate(pillar.PillarOperatorMixin,

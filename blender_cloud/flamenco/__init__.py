@@ -20,9 +20,9 @@
 
 The preferences are managed blender.py, the rest of the Flamenco-specific stuff is here.
 """
-
+import functools
 import logging
-from pathlib import Path
+from pathlib import Path, PurePath
 import typing
 
 import bpy
@@ -135,6 +135,20 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         from ..blender import preferences
 
         filepath = Path(context.blend_data.filepath)
+        scene = context.scene
+
+        # The file extension should be determined by the render settings, not necessarily
+        # by the setttings in the output panel.
+        scene.render.use_file_extension = True
+        bpy.ops.wm.save_mainfile()
+
+        # Determine where the render output will be stored.
+        render_output = render_output_path(context)
+        if render_output is None:
+            self.report({'ERROR'}, 'Current file is outside of project path.')
+            self.quit()
+            return
+        self.log.info('Will output render files to %s', render_output)
 
         # BAM-pack the files to the destination directory.
         outfile, missing_sources = await self.bam_pack(filepath)
@@ -145,11 +159,12 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         # Create the job at Flamenco Server.
         prefs = preferences()
-        scene = context.scene
+
         settings = {'blender_cmd': '{blender}',
                     'chunk_size': scene.flamenco_render_chunk_size,
                     'filepath': str(outfile),
                     'frames': scene.flamenco_render_frame_range,
+                    'render_output': str(render_output),
                     }
         try:
             job_info = await create_job(self.user_id,
@@ -205,7 +220,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         # BAM doesn't like output directories that end in '.blend'.
         unique_dir = '%s-%s-%s' % (datetime.now().isoformat('-').replace(':', ''),
                                    self.db_user['username'],
-                                   filepath.name.replace('.blend', ''))
+                                   filepath.stem)
         outdir = Path(prefs.flamenco_job_file_path) / unique_dir
         outfile = outdir / filepath.name
 
@@ -266,26 +281,25 @@ class FLAMENCO_OT_copy_files(Operator,
         self.quit()
 
 
-class FLAMENCO_OT_open_job_file_path(Operator):
+class FLAMENCO_OT_explore_file_path(Operator):
     """Opens the Flamenco job storage path in a file explorer."""
-    bl_idname = 'flamenco.open_job_file_path'
+    bl_idname = 'flamenco.explore_file_path'
     bl_label = 'Open in file explorer'
     bl_description = __doc__.rstrip('.')
+
+    path = StringProperty(name='Path', description='Path to explore', subtype='DIR_PATH')
 
     def execute(self, context):
         import platform
         import subprocess
         import os
 
-        from ..blender import preferences
-
-        path = preferences().flamenco_job_file_path
         if platform.system() == "Windows":
-            os.startfile(path)
+            os.startfile(self.path)
         elif platform.system() == "Darwin":
-            subprocess.Popen(["open", path])
+            subprocess.Popen(["open", self.path])
         else:
-            subprocess.Popen(["xdg-open", path])
+            subprocess.Popen(["xdg-open", self.path])
 
         return {'FINISHED'}
 
@@ -328,6 +342,69 @@ async def create_job(user_id: str,
     return job.to_dict()
 
 
+def is_image_type(render_output_type: str) -> bool:
+    """Determines whether the render output type is an image (True) or video (False)."""
+
+    # This list is taken from rna_scene.c:273, rna_enum_image_type_items.
+    video_types = {'AVI_JPEG', 'AVI_RAW', 'FRAMESERVER', 'FFMPEG', 'QUICKTIME'}
+    return render_output_type not in video_types
+
+
+@functools.lru_cache(1)
+def _render_output_path(
+        local_project_path: str,
+        blend_filepath: str,
+        flamenco_job_output_strip_components: int,
+        flamenco_job_output_path: str,
+        render_image_format: str,
+        flamenco_render_frame_range: str,
+) -> typing.Optional[PurePath]:
+    """Cached version of render_output_path()
+
+    This ensures that redraws of the Flamenco Render and Add-on preferences panels
+    is fast.
+    """
+
+    project_path = Path(bpy.path.abspath(local_project_path)).resolve()
+    blendfile = Path(blend_filepath)
+
+    try:
+        proj_rel = blendfile.parent.relative_to(project_path)
+    except ValueError:
+        log.exception('Current file is outside of project path %s', project_path)
+        return None
+
+    rel_parts = proj_rel.parts[flamenco_job_output_strip_components:]
+    output_top = Path(flamenco_job_output_path)
+    dir_components = output_top.joinpath(*rel_parts) / blendfile.stem
+
+    # Blender will have to append the file extensions by itself.
+    if is_image_type(render_image_format):
+        return dir_components / '#####'
+    return dir_components / flamenco_render_frame_range
+
+
+def render_output_path(context) -> typing.Optional[PurePath]:
+    """Returns the render output path to be sent to Flamenco.
+
+    Returns None when the current blend file is outside the project path.
+    """
+
+    from ..blender import preferences
+
+    scene = context.scene
+    prefs = preferences()
+
+    return _render_output_path(
+        prefs.attract_project_local_path,
+        context.blend_data.filepath,
+        prefs.flamenco_job_output_strip_components,
+        prefs.flamenco_job_output_path,
+        scene.render.image_settings.file_format,
+        scene.flamenco_render_frame_range,
+    )
+
+
 class FLAMENCO_PT_render(bpy.types.Panel):
     bl_label = "Flamenco Render"
     bl_space_type = 'PROPERTIES'
@@ -339,6 +416,8 @@ class FLAMENCO_PT_render(bpy.types.Panel):
         layout = self.layout
 
         from ..blender import preferences
+
+        prefs = preferences()
 
         layout.prop(context.scene, 'flamenco_render_job_priority')
         layout.prop(context.scene, 'flamenco_render_chunk_size')
@@ -353,11 +432,23 @@ class FLAMENCO_PT_render(bpy.types.Panel):
         prop_btn_row.prop(context.scene, 'flamenco_render_frame_range', text='')
         prop_btn_row.operator('flamenco.scene_to_frame_range', text='', icon='ARROW_LEFTRIGHT')
 
-        labeled_row = layout.split(0.2, align=True)
+        readonly_stuff = layout.column(align=True)
+        labeled_row = readonly_stuff.split(0.2, align=True)
         labeled_row.label('Storage:')
         prop_btn_row = labeled_row.row(align=True)
-        prop_btn_row.label(preferences().flamenco_job_file_path)
-        prop_btn_row.operator(FLAMENCO_OT_open_job_file_path.bl_idname, text='', icon='DISK_DRIVE')
+        prop_btn_row.label(prefs.flamenco_job_file_path)
+        props = prop_btn_row.operator(FLAMENCO_OT_explore_file_path.bl_idname,
+                                      text='', icon='DISK_DRIVE')
+        props.path = prefs.flamenco_job_file_path
+
+        labeled_row = readonly_stuff.split(0.2, align=True)
+        labeled_row.label('Output:')
+        prop_btn_row = labeled_row.row(align=True)
+        render_output = render_output_path(context)
+        prop_btn_row.label(str(render_output))
+        props = prop_btn_row.operator(FLAMENCO_OT_explore_file_path.bl_idname,
+                                      text='', icon='DISK_DRIVE')
+        props.path = str(render_output.parent)
 
         layout.operator(FLAMENCO_OT_render.bl_idname,
                         text='Render on Flamenco',
@@ -370,7 +461,7 @@ def register():
     bpy.utils.register_class(FLAMENCO_OT_render)
     bpy.utils.register_class(FLAMENCO_OT_scene_to_frame_range)
     bpy.utils.register_class(FLAMENCO_OT_copy_files)
-    bpy.utils.register_class(FLAMENCO_OT_open_job_file_path)
+    bpy.utils.register_class(FLAMENCO_OT_explore_file_path)
     bpy.utils.register_class(FLAMENCO_PT_render)
 
     scene = bpy.types.Scene
