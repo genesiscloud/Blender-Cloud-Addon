@@ -81,7 +81,7 @@ class FLAMENCO_OT_fmanagers(async_loop.AsyncModalOperatorMixin,
     bl_label = 'Fetch available Flamenco Managers'
 
     stop_upon_exception = True
-    _log = logging.getLogger('bpy.ops.%s' % bl_idname)
+    log = logging.getLogger('%s.FLAMENCO_OT_fmanagers' % __name__)
 
     @property
     def mypref(self) -> FlamencoManagerGroup:
@@ -122,7 +122,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
     bl_description = __doc__.rstrip('.')
 
     stop_upon_exception = True
-    _log = logging.getLogger('bpy.ops.%s' % bl_idname)
+    log = logging.getLogger('%s.FLAMENCO_OT_render' % __name__)
 
     async def async_execute(self, context):
         if not await self.authenticate(context):

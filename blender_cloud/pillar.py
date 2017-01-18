@@ -850,13 +850,13 @@ class AuthenticatedPillarOperatorMixin(PillarOperatorMixin):
     async def authenticate(self, context) -> bool:
         from . import pillar
 
-        self._log.info('Checking credentials')
+        self.log.info('Checking credentials')
         self.user_id = None
         self.db_user = None
         try:
             self.db_user = await self.check_credentials(context, ())
         except pillar.UserNotLoggedInError as ex:
-            self._log.info('Not logged in error raised: %s', ex)
+            self.log.info('Not logged in error raised: %s', ex)
             self.report({'ERROR'}, 'Please log in on Blender ID first.')
             self.quit()
             return False
