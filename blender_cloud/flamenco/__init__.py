@@ -445,14 +445,17 @@ class FLAMENCO_PT_render(bpy.types.Panel):
         labeled_row.label('Output:')
         prop_btn_row = labeled_row.row(align=True)
         render_output = render_output_path(context)
-        prop_btn_row.label(str(render_output))
-        props = prop_btn_row.operator(FLAMENCO_OT_explore_file_path.bl_idname,
-                                      text='', icon='DISK_DRIVE')
-        props.path = str(render_output.parent)
+        if render_output is None:
+            prop_btn_row.label('Unable to render with Flamenco, outside of project directory.')
+        else:
+            prop_btn_row.label(str(render_output))
+            props = prop_btn_row.operator(FLAMENCO_OT_explore_file_path.bl_idname,
+                                          text='', icon='DISK_DRIVE')
+            props.path = str(render_output.parent)
 
-        layout.operator(FLAMENCO_OT_render.bl_idname,
-                        text='Render on Flamenco',
-                        icon='RENDER_ANIMATION')
+            layout.operator(FLAMENCO_OT_render.bl_idname,
+                            text='Render on Flamenco',
+                            icon='RENDER_ANIMATION')
 
 
 def register():
