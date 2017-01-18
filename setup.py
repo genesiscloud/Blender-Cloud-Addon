@@ -231,7 +231,7 @@ setup(
     author='Sybren A. Stüvel',
     author_email='sybren@stuvel.eu',
     packages=find_packages('.'),
-    data_files=[('blender_cloud', ['README.md']),
+    data_files=[('blender_cloud', ['README.md', 'README-flamenco.md']),
                 ('blender_cloud/icons', glob.glob('blender_cloud/icons/*'))],
     scripts=[],
     url='https://developer.blender.org/diffusion/BCA/',
