@@ -146,10 +146,11 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         # Create the job at Flamenco Server.
         prefs = preferences()
         scene = context.scene
-        settings = {"blender_cmd": "{blender}",
-                    "chunk_size": scene.flamenco_render_chunk_size,
-                    "filepath": str(outfile),
-                    "frames": scene.flamenco_render_frame_range}
+        settings = {'blender_cmd': '{blender}',
+                    'chunk_size': scene.flamenco_render_chunk_size,
+                    'filepath': str(outfile),
+                    'frames': scene.flamenco_render_frame_range,
+                    }
         try:
             job_info = await create_job(self.user_id,
                                         prefs.attract_project.project,
