@@ -128,6 +128,9 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         if not await self.authenticate(context):
             return
 
+        context.window_manager.progress_begin(0, 4)
+        context.window_manager.progress_update(1)
+
         from pillarsdk import exceptions as sdk_exceptions
         from ..blender import preferences
 
@@ -137,6 +140,8 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         outfile, missing_sources = await self.bam_pack(filepath)
         if not outfile:
             return
+
+        context.window_manager.progress_update(3)
 
         # Create the job at Flamenco Server.
         prefs = preferences()
@@ -173,6 +178,10 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         else:
             self.report({'INFO'}, 'Flamenco job created.')
         self.quit()
+
+    def quit(self):
+        super().quit()
+        bpy.context.window_manager.progress_end()
 
     async def bam_pack(self, filepath: Path) -> (typing.Optional[Path], typing.List[Path]):
         """BAM-packs the blendfile to the destination directory.
