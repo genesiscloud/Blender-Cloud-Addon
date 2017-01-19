@@ -456,6 +456,11 @@ class FLAMENCO_PT_render(bpy.types.Panel):
                             text='Render on Flamenco',
                             icon='RENDER_ANIMATION')
 
+        if not context.scene.render.use_overwrite:
+            warnbox = layout.box().column(align=True)
+            warnbox.label('Please enable "Overwrite" in the Output panel,')
+            warnbox.label('or re-queueing this job might not do anything.')
+
 
 def register():
     bpy.utils.register_class(FlamencoManagerGroup)
