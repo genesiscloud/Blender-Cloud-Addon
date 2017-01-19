@@ -371,7 +371,6 @@ def _render_output_path(
     try:
         proj_rel = blendfile.parent.relative_to(project_path)
     except ValueError:
-        log.exception('Current file is outside of project path %s', project_path)
         return None
 
     rel_parts = proj_rel.parts[flamenco_job_output_strip_components:]
