@@ -200,6 +200,11 @@ class BlenderCloudPreferences(AddonPreferences):
         default=0,
         soft_max=4,
     )
+    flamenco_open_browser_after_submit = BoolProperty(
+        name='Open Browser after Submitting Job',
+        description='When enabled, Blender will open a webbrowser',
+        default=True
+    )
 
     def draw(self, context):
         import textwrap
@@ -388,6 +393,8 @@ class BlenderCloudPreferences(AddonPreferences):
         path_box.label(str(output_path))
         props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
         props.path = str(output_path.parent)
+
+        flamenco_box.prop(self, 'flamenco_open_browser_after_submit')
 
         # TODO: make a reusable way to select projects, and use that for Attract and Flamenco.
         note_box = flamenco_box.column(align=True)

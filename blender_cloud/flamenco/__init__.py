@@ -201,6 +201,14 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             self.quit()
             return
 
+        if prefs.flamenco_open_browser_after_submit:
+            import webbrowser
+            from urllib.parse import urljoin
+            from ..blender import PILLAR_WEB_SERVER_URL
+
+            url = urljoin(PILLAR_WEB_SERVER_URL, '/flamenco/jobs/%s/redir' % job_info['_id'])
+            webbrowser.open_new_tab(url)
+
         # Do a final report.
         if missing_sources:
             names = (ms.name for ms in missing_sources)
