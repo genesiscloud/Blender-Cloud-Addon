@@ -216,6 +216,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                         '; '.join(names))
         else:
             self.report({'INFO'}, 'Flamenco job created.')
+
         self.quit()
 
     def quit(self):
@@ -455,18 +456,18 @@ class FLAMENCO_PT_render(bpy.types.Panel):
         layout.prop(context.scene, 'flamenco_render_job_priority')
         layout.prop(context.scene, 'flamenco_render_chunk_size')
 
-        labeled_row = layout.split(0.2, align=True)
-        labeled_row.label('Job type:')
+        labeled_row = layout.split(0.25, align=True)
+        labeled_row.label('Job Type:')
         labeled_row.prop(context.scene, 'flamenco_render_job_type', text='')
 
-        labeled_row = layout.split(0.2, align=True)
-        labeled_row.label('Frame range:')
+        labeled_row = layout.split(0.25, align=True)
+        labeled_row.label('Frame Range:')
         prop_btn_row = labeled_row.row(align=True)
         prop_btn_row.prop(context.scene, 'flamenco_render_frame_range', text='')
         prop_btn_row.operator('flamenco.scene_to_frame_range', text='', icon='ARROW_LEFTRIGHT')
 
         readonly_stuff = layout.column(align=True)
-        labeled_row = readonly_stuff.split(0.2, align=True)
+        labeled_row = readonly_stuff.split(0.25, align=True)
         labeled_row.label('Storage:')
         prop_btn_row = labeled_row.row(align=True)
         prop_btn_row.label(prefs.flamenco_job_file_path)
@@ -474,7 +475,7 @@ class FLAMENCO_PT_render(bpy.types.Panel):
                                       text='', icon='DISK_DRIVE')
         props.path = prefs.flamenco_job_file_path
 
-        labeled_row = readonly_stuff.split(0.2, align=True)
+        labeled_row = readonly_stuff.split(0.25, align=True)
         labeled_row.label('Output:')
         prop_btn_row = labeled_row.row(align=True)
         render_output = render_output_path(context)
@@ -551,6 +552,7 @@ def register():
         default='IDLE',
         description='Current status of the Flamenco add-on',
         update=redraw)
+
 
 def unregister():
     bpy.utils.unregister_module(__name__)

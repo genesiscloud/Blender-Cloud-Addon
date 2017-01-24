@@ -155,12 +155,12 @@ class BlenderCloudPreferences(AddonPreferences):
     )
 
     local_texture_dir = StringProperty(
-        name='Default Blender Cloud texture storage directory',
+        name='Default Blender Cloud Texture Storage Directory',
         subtype='DIR_PATH',
         default='//textures')
 
     open_browser_after_share = BoolProperty(
-        name='Open browser after sharing file',
+        name='Open Browser after Sharing File',
         description='When enabled, Blender will open a webbrowser',
         default=True
     )
@@ -169,7 +169,7 @@ class BlenderCloudPreferences(AddonPreferences):
     # can switch projects and the local path switches with it.
     attract_project = PointerProperty(type=BlenderCloudProjectGroup)
     attract_project_local_path = StringProperty(
-        name='Local project path',
+        name='Local Project Path',
         description='Local path of your Attract project, used to search for blend files; '
                     'usually best to set to an absolute path',
         subtype='DIR_PATH',
@@ -180,19 +180,19 @@ class BlenderCloudPreferences(AddonPreferences):
     # NOTE: The assumption is that the workers can also find the files in the same path.
     #       This assumption is true for the Blender Institute.
     flamenco_job_file_path = StringProperty(
-        name='Job file path',
+        name='Job File Path',
         description='Path where to store job files, should be accesible for Workers too',
         subtype='DIR_PATH',
         default='/render/_flamenco/storage')
 
     # TODO: before making Flamenco public, change the defaults to something less Institute-specific.
     flamenco_job_output_path = StringProperty(
-        name='Job output path',
+        name='Job Output Path',
         description='Path where to store output files, should be accessible for Workers',
         subtype='DIR_PATH',
         default='/render/_flamenco/output')
     flamenco_job_output_strip_components = IntProperty(
-        name='Job output path strip components',
+        name='Job Output Path Strip Components',
         description='The final output path comprises of the job output path, and the blend file '
                     'path relative to the project with this many path components stripped off '
                     'the front',
@@ -384,7 +384,7 @@ class BlenderCloudPreferences(AddonPreferences):
         props.path = self.flamenco_job_output_path
 
         job_output_box.prop(self, 'flamenco_job_output_strip_components',
-                            text='Strip components')
+                            text='Strip Components')
 
         from .flamenco import render_output_path
 
