@@ -134,16 +134,23 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         from pillarsdk import exceptions as sdk_exceptions
         from ..blender import preferences
 
-        filepath = Path(context.blend_data.filepath)
         scene = context.scene
 
         # The file extension should be determined by the render settings, not necessarily
         # by the setttings in the output panel.
         scene.render.use_file_extension = True
-        bpy.ops.wm.save_mainfile()
+
+        # Save to a different file, specifically for Flamenco. We shouldn't overwrite
+        # the artist's file. We can compress, since this file won't be managed by SVN
+        # and doesn't need diffability.
+        filepath = Path(context.blend_data.filepath).with_suffix('.flamenco.blend')
+        self.log.info('Saving copy to temporary file %s', filepath)
+        bpy.ops.wm.save_as_mainfile(filepath=str(filepath),
+                                    compress=True,
+                                    copy=True)
 
         # Determine where the render output will be stored.
-        render_output = render_output_path(context)
+        render_output = render_output_path(context, filepath)
         if render_output is None:
             self.report({'ERROR'}, 'Current file is outside of project path.')
             self.quit()
@@ -185,6 +192,17 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
             job_info['missing_files'] = [str(mf) for mf in missing_sources]
             json.dump(job_info, outfile, sort_keys=True, indent=4)
+
+        # We can now remove the local copy we made with bpy.ops.wm.save_as_mainfile().
+        # Strictly speaking we can already remove it after the BAM-pack, but it may come in
+        # handy in case of failures.
+        try:
+            self.log.info('Removing temporary file %s', filepath)
+            filepath.unlink()
+        except Exception as ex:
+            self.report({'ERROR'}, 'Unable to remove file: %s' % ex)
+            self.quit()
+            return
 
         # Do a final report.
         if missing_sources:
@@ -353,7 +371,7 @@ def is_image_type(render_output_type: str) -> bool:
 @functools.lru_cache(1)
 def _render_output_path(
         local_project_path: str,
-        blend_filepath: str,
+        blend_filepath: Path,
         flamenco_job_output_strip_components: int,
         flamenco_job_output_path: str,
         render_image_format: str,
@@ -366,16 +384,15 @@ def _render_output_path(
     """
 
     project_path = Path(bpy.path.abspath(local_project_path)).resolve()
-    blendfile = Path(blend_filepath)
 
     try:
-        proj_rel = blendfile.parent.relative_to(project_path)
+        proj_rel = blend_filepath.parent.relative_to(project_path)
     except ValueError:
         return None
 
     rel_parts = proj_rel.parts[flamenco_job_output_strip_components:]
     output_top = Path(flamenco_job_output_path)
-    dir_components = output_top.joinpath(*rel_parts) / blendfile.stem
+    dir_components = output_top.joinpath(*rel_parts) / blend_filepath.stem
 
     # Blender will have to append the file extensions by itself.
     if is_image_type(render_image_format):
@@ -383,8 +400,11 @@ def _render_output_path(
     return dir_components / flamenco_render_frame_range
 
 
-def render_output_path(context) -> typing.Optional[PurePath]:
+def render_output_path(context, filepath: Path=None) -> typing.Optional[PurePath]:
     """Returns the render output path to be sent to Flamenco.
+
+    :param context: the Blender context (used to find Flamenco preferences etc.)
+    :param filepath: the Path of the blend file to render, or None for the current file.
 
     Returns None when the current blend file is outside the project path.
     """
@@ -394,9 +414,12 @@ def render_output_path(context) -> typing.Optional[PurePath]:
     scene = context.scene
     prefs = preferences()
 
+    if filepath is None:
+        filepath = Path(context.blend_data.filepath)
+
     return _render_output_path(
         prefs.attract_project_local_path,
-        context.blend_data.filepath,
+        filepath,
         prefs.flamenco_job_output_strip_components,
         prefs.flamenco_job_output_path,
         scene.render.image_settings.file_format,
