@@ -128,9 +128,6 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         if not await self.authenticate(context):
             return
 
-        context.window_manager.progress_begin(0, 4)
-        context.window_manager.progress_update(1)
-
         from pillarsdk import exceptions as sdk_exceptions
         from ..blender import preferences
 
@@ -143,6 +140,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         # Save to a different file, specifically for Flamenco. We shouldn't overwrite
         # the artist's file. We can compress, since this file won't be managed by SVN
         # and doesn't need diffability.
+        context.window_manager.flamenco_status = 'PACKING'
         filepath = Path(context.blend_data.filepath).with_suffix('.flamenco.blend')
         self.log.info('Saving copy to temporary file %s', filepath)
         bpy.ops.wm.save_as_mainfile(filepath=str(filepath),
@@ -162,11 +160,10 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         if not outfile:
             return
 
-        context.window_manager.progress_update(3)
-
         # Create the job at Flamenco Server.
         prefs = preferences()
 
+        context.window_manager.flamenco_status = 'COMMUNICATING'
         settings = {'blender_cmd': '{blender}',
                     'chunk_size': scene.flamenco_render_chunk_size,
                     'filepath': str(outfile),
@@ -215,7 +212,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
     def quit(self):
         super().quit()
-        bpy.context.window_manager.progress_end()
+        bpy.context.window_manager.flamenco_status = 'IDLE'
 
     async def bam_pack(self, filepath: Path) -> (typing.Optional[Path], typing.List[Path]):
         """BAM-packs the blendfile to the destination directory.
@@ -287,6 +284,8 @@ class FLAMENCO_OT_copy_files(Operator,
         from . import bam_interface
         from ..blender import preferences
 
+        context.window_manager.flamenco_status = 'PACKING'
+
         missing_sources = await bam_interface.bam_copy(
             Path(context.blend_data.filepath),
             Path(preferences().flamenco_job_file_path),
@@ -297,6 +296,10 @@ class FLAMENCO_OT_copy_files(Operator,
             self.report({'ERROR'}, 'Missing source files: %s' % '; '.join(names))
 
         self.quit()
+
+    def quit(self):
+        super().quit()
+        bpy.context.window_manager.flamenco_status = 'IDLE'
 
 
 class FLAMENCO_OT_explore_file_path(Operator):
@@ -467,6 +470,7 @@ class FLAMENCO_PT_render(bpy.types.Panel):
         labeled_row.label('Output:')
         prop_btn_row = labeled_row.row(align=True)
         render_output = render_output_path(context)
+
         if render_output is None:
             prop_btn_row.label('Unable to render with Flamenco, outside of project directory.')
         else:
@@ -475,9 +479,17 @@ class FLAMENCO_PT_render(bpy.types.Panel):
                                           text='', icon='DISK_DRIVE')
             props.path = str(render_output.parent)
 
-            layout.operator(FLAMENCO_OT_render.bl_idname,
-                            text='Render on Flamenco',
-                            icon='RENDER_ANIMATION')
+            flamenco_status = context.window_manager.flamenco_status
+            if flamenco_status == 'IDLE':
+                layout.operator(FLAMENCO_OT_render.bl_idname,
+                                text='Render on Flamenco',
+                                icon='RENDER_ANIMATION')
+            elif flamenco_status == 'PACKING':
+                layout.label('Flamenco is packing your file + dependencies')
+            elif flamenco_status == 'COMMUNICATING':
+                layout.label('Communicating with Flamenco Server')
+            else:
+                layout.label('Unknown Flamenco status %s' % flamenco_status)
 
         if not context.scene.render.use_overwrite:
             warnbox = layout.box().column(align=True)
@@ -486,6 +498,8 @@ class FLAMENCO_PT_render(bpy.types.Panel):
 
 
 def register():
+    from ..utils import redraw
+
     bpy.utils.register_class(FlamencoManagerGroup)
     bpy.utils.register_class(FLAMENCO_OT_fmanagers)
     bpy.utils.register_class(FLAMENCO_OT_render)
@@ -519,6 +533,16 @@ def register():
         description='Higher numbers mean higher priority'
     )
 
+    bpy.types.WindowManager.flamenco_status = EnumProperty(
+        items=[
+            ('IDLE', 'IDLE', 'Not doing anything.'),
+            ('PACKING', 'PACKING', 'BAM-packing all dependencies.'),
+            ('COMMUNICATING', 'COMMUNICATING', 'Communicating with Flamenco Server.'),
+        ],
+        name='flamenco_status',
+        default='IDLE',
+        description='Current status of the Flamenco add-on',
+        update=redraw)
 
 def unregister():
     bpy.utils.unregister_module(__name__)
@@ -537,5 +561,9 @@ def unregister():
         pass
     try:
         del bpy.types.Scene.flamenco_render_job_priority
+    except AttributeError:
+        pass
+    try:
+        del bpy.types.WindowManager.flamenco_status
     except AttributeError:
         pass
