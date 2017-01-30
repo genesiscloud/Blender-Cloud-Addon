@@ -165,11 +165,17 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         context.window_manager.flamenco_status = 'COMMUNICATING'
         settings = {'blender_cmd': '{blender}',
-                    'chunk_size': scene.flamenco_render_chunk_size,
+                    'chunk_size': scene.flamenco_render_fchunk_size,
                     'filepath': str(outfile),
                     'frames': scene.flamenco_render_frame_range,
                     'render_output': str(render_output),
                     }
+
+        # Add extra settings specific to the job type
+        if scene.flamenco_render_job_type == 'blender-render-progressive':
+            settings['cycles_num_chunks'] = scene.flamenco_render_schunk_count
+            settings['cycles_sample_count'] = scene.cycles.samples
+
         try:
             job_info = await create_job(self.user_id,
                                         prefs.attract_project.project,
@@ -412,7 +418,7 @@ def _render_output_path(
     return dir_components / flamenco_render_frame_range
 
 
-def render_output_path(context, filepath: Path=None) -> typing.Optional[PurePath]:
+def render_output_path(context, filepath: Path = None) -> typing.Optional[PurePath]:
     """Returns the render output path to be sent to Flamenco.
 
     :param context: the Blender context (used to find Flamenco preferences etc.)
@@ -453,9 +459,6 @@ class FLAMENCO_PT_render(bpy.types.Panel):
 
         prefs = preferences()
 
-        layout.prop(context.scene, 'flamenco_render_job_priority')
-        layout.prop(context.scene, 'flamenco_render_chunk_size')
-
         labeled_row = layout.split(0.25, align=True)
         labeled_row.label('Job Type:')
         labeled_row.prop(context.scene, 'flamenco_render_job_type', text='')
@@ -465,6 +468,12 @@ class FLAMENCO_PT_render(bpy.types.Panel):
         prop_btn_row = labeled_row.row(align=True)
         prop_btn_row.prop(context.scene, 'flamenco_render_frame_range', text='')
         prop_btn_row.operator('flamenco.scene_to_frame_range', text='', icon='ARROW_LEFTRIGHT')
+
+        layout.prop(context.scene, 'flamenco_render_job_priority')
+        layout.prop(context.scene, 'flamenco_render_fchunk_size')
+
+        if getattr(context.scene, 'flamenco_render_job_type', None) == 'blender-render-progressive':
+            layout.prop(context.scene, 'flamenco_render_schunk_count')
 
         readonly_stuff = layout.column(align=True)
         labeled_row = readonly_stuff.split(0.25, align=True)
@@ -518,24 +527,34 @@ def register():
     bpy.utils.register_class(FLAMENCO_PT_render)
 
     scene = bpy.types.Scene
-    scene.flamenco_render_chunk_size = IntProperty(
-        name='Chunk size',
+    scene.flamenco_render_fchunk_size = IntProperty(
+        name='Frame Chunk Size',
         description='Maximum number of frames to render per task',
+        min=1,
         default=10,
     )
+    scene.flamenco_render_schunk_count = IntProperty(
+        name='Number of Sample Chunks',
+        description='Number of Cycles samples chunks to use per frame',
+        min=2,
+        default=3,
+        soft_max=10,
+    )
     scene.flamenco_render_frame_range = StringProperty(
-        name='Frame range',
+        name='Frame Range',
         description='Frames to render, in "printer range" notation'
     )
     scene.flamenco_render_job_type = EnumProperty(
-        name='Job type',
+        name='Job Type',
         items=[
-            ('blender-render', 'Simple Blender render', 'Not tiled, not resumable, just render'),
-        ],
-        description='Flamenco render job type',
+            ('blender-render', 'Simple Render', 'Simple frame-by-frame render'),
+            ('blender-render-progressive', 'Progressive Render',
+             'Each frame is rendered multiple times with different Cycles sample chunks, then combined'),
+        ]
     )
+
     scene.flamenco_render_job_priority = IntProperty(
-        name='Job priority',
+        name='Job Priority',
         min=0,
         default=50,
         max=100,
@@ -558,7 +577,11 @@ def unregister():
     bpy.utils.unregister_module(__name__)
 
     try:
-        del bpy.types.Scene.flamenco_render_chunk_size
+        del bpy.types.Scene.flamenco_render_fchunk_size
+    except AttributeError:
+        pass
+    try:
+        del bpy.types.Scene.flamenco_render_schunk_count
     except AttributeError:
         pass
     try:
