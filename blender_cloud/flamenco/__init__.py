@@ -189,7 +189,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                                         settings,
                                         'Render %s' % filepath.name,
                                         priority=scene.flamenco_render_job_priority)
-        except sdk_exceptions.ResourceInvalid as ex:
+        except Exception as ex:
             self.report({'ERROR'}, 'Error creating Flamenco job: %s' % ex)
             self.quit()
             return
