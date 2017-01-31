@@ -418,7 +418,7 @@ def _render_output_path(
 
     # Blender will have to append the file extensions by itself.
     if is_image_type(render_image_format):
-        return dir_components / '#####'
+        return dir_components / '######'
     return dir_components / flamenco_render_frame_range
 
 
