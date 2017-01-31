@@ -415,7 +415,14 @@ def _render_output_path(
 
     rel_parts = proj_rel.parts[flamenco_job_output_strip_components:]
     output_top = Path(flamenco_job_output_path)
-    dir_components = output_top.joinpath(*rel_parts) / blend_filepath.stem
+
+    # Strip off '.flamenco' too; we use 'xxx.flamenco.blend' as job file, but
+    # don't want to have all the output paths ending in '.flamenco'.
+    stem = blend_filepath.stem
+    if stem.endswith('.flamenco'):
+        stem = stem[:-9]
+
+    dir_components = output_top.joinpath(*rel_parts) / stem
 
     # Blender will have to append the file extensions by itself.
     if is_image_type(render_image_format):
