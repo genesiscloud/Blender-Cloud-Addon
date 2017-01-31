@@ -173,8 +173,12 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         # Add extra settings specific to the job type
         if scene.flamenco_render_job_type == 'blender-render-progressive':
+            samples = scene.cycles.samples
+            if scene.cycles.use_square_samples:
+                samples **= 2
+
             settings['cycles_num_chunks'] = scene.flamenco_render_schunk_count
-            settings['cycles_sample_count'] = scene.cycles.samples
+            settings['cycles_sample_count'] = samples
 
         try:
             job_info = await create_job(self.user_id,
