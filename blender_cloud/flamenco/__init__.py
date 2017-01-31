@@ -179,6 +179,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
             settings['cycles_num_chunks'] = scene.flamenco_render_schunk_count
             settings['cycles_sample_count'] = samples
+            settings['format'] = 'EXR'
 
         try:
             job_info = await create_job(self.user_id,
