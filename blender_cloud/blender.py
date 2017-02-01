@@ -390,9 +390,13 @@ class BlenderCloudPreferences(AddonPreferences):
 
         path_box = job_output_box.row(align=True)
         output_path = render_output_path(context)
-        path_box.label(str(output_path))
-        props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
-        props.path = str(output_path.parent)
+        if output_path:
+            path_box.label(str(output_path))
+            props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
+            props.path = str(output_path.parent)
+        else:
+            path_box.label('Blend file is not in your project path, '
+                           'unable to give output path example.')
 
         flamenco_box.prop(self, 'flamenco_open_browser_after_submit')
 

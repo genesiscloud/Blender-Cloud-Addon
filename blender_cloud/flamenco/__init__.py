@@ -406,7 +406,11 @@ def _render_output_path(
     is fast.
     """
 
-    project_path = Path(bpy.path.abspath(local_project_path)).resolve()
+    try:
+        project_path = Path(bpy.path.abspath(local_project_path)).resolve()
+    except FileNotFoundError:
+        # Path.resolve() will raise a FileNotFoundError if the project path doesn't exist.
+        return None
 
     try:
         proj_rel = blend_filepath.parent.relative_to(project_path)
