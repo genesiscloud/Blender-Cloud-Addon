@@ -128,24 +128,13 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         if not await self.authenticate(context):
             return
 
-        from pillarsdk import exceptions as sdk_exceptions
         from ..blender import preferences
 
         scene = context.scene
 
-        # The file extension should be determined by the render settings, not necessarily
-        # by the setttings in the output panel.
-        scene.render.use_file_extension = True
-
-        # Save to a different file, specifically for Flamenco. We shouldn't overwrite
-        # the artist's file. We can compress, since this file won't be managed by SVN
-        # and doesn't need diffability.
+        # Save to a different file, specifically for Flamenco.
         context.window_manager.flamenco_status = 'PACKING'
-        filepath = Path(context.blend_data.filepath).with_suffix('.flamenco.blend')
-        self.log.info('Saving copy to temporary file %s', filepath)
-        bpy.ops.wm.save_as_mainfile(filepath=str(filepath),
-                                    compress=True,
-                                    copy=True)
+        filepath = await self._save_blendfile(context)
 
         # Determine where the render output will be stored.
         render_output = render_output_path(context, filepath)
@@ -229,6 +218,43 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             self.report({'INFO'}, 'Flamenco job created.')
 
         self.quit()
+
+    async def _save_blendfile(self, context):
+        """Save to a different file, specifically for Flamenco.
+
+        We shouldn't overwrite the artist's file.
+        We can compress, since this file won't be managed by SVN and doesn't need diffability.
+        """
+
+        render = context.scene.render
+
+        # Remember settings we need to restore after saving.
+        old_use_file_extension = render.use_file_extension
+        old_use_overwrite = render.use_overwrite
+        old_use_placeholder = render.use_placeholder
+
+        try:
+
+            # The file extension should be determined by the render settings, not necessarily
+            # by the setttings in the output panel.
+            render.use_file_extension = True
+
+            # Rescheduling should not overwrite existing frames.
+            render.use_overwrite = False
+            render.use_placeholder = False
+
+            filepath = Path(context.blend_data.filepath).with_suffix('.flamenco.blend')
+            self.log.info('Saving copy to temporary file %s', filepath)
+            bpy.ops.wm.save_as_mainfile(filepath=str(filepath),
+                                        compress=True,
+                                        copy=True)
+        finally:
+            # Restore the settings we changed, even after an exception.
+            render.use_file_extension = old_use_file_extension
+            render.use_overwrite = old_use_overwrite
+            render.use_placeholder = old_use_placeholder
+
+        return filepath
 
     def quit(self):
         super().quit()
@@ -524,11 +550,6 @@ class FLAMENCO_PT_render(bpy.types.Panel):
                 layout.label('Communicating with Flamenco Server')
             else:
                 layout.label('Unknown Flamenco status %s' % flamenco_status)
-
-        if not context.scene.render.use_overwrite:
-            warnbox = layout.box().column(align=True)
-            warnbox.label('Please enable "Overwrite" in the Output panel,')
-            warnbox.label('or re-queueing this job might not do anything.')
 
 
 def register():
