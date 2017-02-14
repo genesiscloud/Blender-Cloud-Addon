@@ -568,7 +568,7 @@ def register():
         name='Frame Chunk Size',
         description='Maximum number of frames to render per task',
         min=1,
-        default=10,
+        default=1,
     )
     scene.flamenco_render_schunk_count = IntProperty(
         name='Number of Sample Chunks',
