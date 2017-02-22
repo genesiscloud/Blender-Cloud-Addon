@@ -248,6 +248,7 @@ class PillarCredentialsUpdate(pillar.PillarOperatorMixin,
     """Updates the Pillar URL and tests the new URL."""
     bl_idname = 'pillar.credentials_update'
     bl_label = 'Update credentials'
+    bl_description = 'Updates the Pillar URL and tests the new URL'
 
     log = logging.getLogger('bpy.ops.%s' % bl_idname)
 
@@ -294,6 +295,7 @@ class PILLAR_OT_subscribe(Operator):
     """Opens a browser to subscribe the user to the Cloud."""
     bl_idname = 'pillar.subscribe'
     bl_label = 'Subscribe to the Cloud'
+    bl_description = 'Opens a browser to subscribe the user to the Cloud'
 
     def execute(self, context):
         import webbrowser
