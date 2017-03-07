@@ -860,6 +860,13 @@ class AuthenticatedPillarOperatorMixin(PillarOperatorMixin):
             self.report({'ERROR'}, 'Please log in on Blender ID first.')
             self.quit()
             return False
+        except requests.exceptions.ConnectionError:
+            self.log.exception('Error checking pillar credentials.')
+            self.report({'ERROR'}, 'Unable to connect to Blender Cloud, '
+                                   'check your internet connection.')
+            self.quit()
+            return False
+
 
         self.user_id = self.db_user['_id']
         return True
