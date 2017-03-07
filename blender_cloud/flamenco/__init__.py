@@ -162,7 +162,11 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         # Add extra settings specific to the job type
         if scene.flamenco_render_job_type == 'blender-render-progressive':
-            samples = scene.cycles.samples
+            if scene.cycles.progressive == 'BRANCHED_PATH':
+                samples = scene.cycles.aa_samples
+            else:
+                samples = scene.cycles.samples
+
             if scene.cycles.use_square_samples:
                 samples **= 2
 
