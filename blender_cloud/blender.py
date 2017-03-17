@@ -20,7 +20,7 @@
 
 Separated from __init__.py so that we can import & run from non-Blender environments.
 """
-
+import functools
 import logging
 import os.path
 
@@ -109,11 +109,59 @@ class SyncStatusProperties(PropertyGroup):
 def bcloud_available_projects(self, context):
     """Returns the list of items used by BlenderCloudProjectGroup.project EnumProperty."""
 
-    attr_proj = preferences().attract_project
-    projs = attr_proj.available_projects
+    projs = preferences().project.available_projects
     if not projs:
         return [('', 'No projects available in your Blender Cloud', '')]
     return [(p['_id'], p['name'], '') for p in projs]
+
+
+@functools.lru_cache(1)
+def project_extensions(project_id) -> set:
+    """Returns the extensions the project is enabled for.
+
+    At the moment of writing these are 'attract' and 'flamenco'.
+    """
+
+    log.debug('Finding extensions for project %s', project_id)
+
+    # We can't use our @property, since the preferences may be loaded from a
+    # preferences blend file, in which case it is not constructed from Python code.
+    available_projects = preferences().project.get('available_projects', [])
+    if not available_projects:
+        log.debug('No projects available.')
+        return set()
+
+    proj = next((p for p in available_projects
+                 if p['_id'] == project_id), None)
+    if proj is None:
+        log.debug('Project %s not found in available projects.', project_id)
+        return set()
+
+    return set(proj.get('enabled_for', ()))
+
+
+def handle_project_update(_=None, _2=None):
+    """Handles changing projects, which may cause extensions to be disabled/enabled.
+
+    Ignores arguments so that it can be used as property update callback.
+    """
+
+    project_id = preferences().project.project
+    log.info('Updating internal state to reflect extensions enabled on current project %s.',
+             project_id)
+
+    project_extensions.cache_clear()
+
+    from blender_cloud import attract, flamenco
+    attract.deactivate()
+    flamenco.deactivate()
+
+    enabled_for = project_extensions(project_id)
+    log.info('Project extensions: %s', enabled_for)
+    if 'attract' in enabled_for:
+        attract.activate()
+    if 'flamenco' in enabled_for:
+        flamenco.activate()
 
 
 class BlenderCloudProjectGroup(PropertyGroup):
@@ -129,7 +177,9 @@ class BlenderCloudProjectGroup(PropertyGroup):
     project = EnumProperty(
         items=bcloud_available_projects,
         name='Cloud project',
-        description='Which Blender Cloud project to work with')
+        description='Which Blender Cloud project to work with',
+        update=handle_project_update
+    )
 
     # List of projects is stored in 'available_projects' ID property,
     # because I don't know how to store a variable list of strings in a proper RNA property.
@@ -140,6 +190,7 @@ class BlenderCloudProjectGroup(PropertyGroup):
     @available_projects.setter
     def available_projects(self, new_projects):
         self['available_projects'] = new_projects
+        handle_project_update()
 
 
 class BlenderCloudPreferences(AddonPreferences):
@@ -165,9 +216,10 @@ class BlenderCloudPreferences(AddonPreferences):
         default=True
     )
 
-    # TODO: store local path with the Attract project, so that people
-    # can switch projects and the local path switches with it.
-    attract_project = PointerProperty(type=BlenderCloudProjectGroup)
+    # TODO: store project-dependent properties with the project, so that people
+    # can switch projects and the Attract and Flamenco properties switch with it.
+    project = PointerProperty(type=BlenderCloudProjectGroup)
+
     attract_project_local_path = StringProperty(
         name='Local Project Path',
         description='Local path of your Attract project, used to search for blend files; '
@@ -219,8 +271,8 @@ class BlenderCloudPreferences(AddonPreferences):
             blender_id_profile = None
         else:
             blender_id_profile = blender_id.get_active_profile()
-
         if blender_id is None:
+
             msg_icon = 'ERROR'
             text = 'This add-on requires Blender ID'
             help_text = 'Make sure that the Blender ID add-on is installed and activated'
@@ -286,13 +338,22 @@ class BlenderCloudPreferences(AddonPreferences):
         share_box.label('Image Sharing on Blender Cloud', icon_value=icon('CLOUD'))
         share_box.prop(self, 'open_browser_after_share')
 
+        # Project selector
+        project_box = layout.box()
+        project_box.enabled = self.project.status in {'NONE', 'IDLE'}
+
+        self.draw_project_selector(project_box, self.project)
+        extensions = project_extensions(self.project.project)
+
         # Attract stuff
-        attract_box = layout.box()
-        self.draw_attract_buttons(attract_box, self.attract_project)
+        if 'attract' in extensions:
+            attract_box = project_box.column()
+            self.draw_attract_buttons(attract_box, self.project)
 
         # Flamenco stuff
-        flamenco_box = layout.box()
-        self.draw_flamenco_buttons(flamenco_box, self.flamenco_manager, context)
+        if 'flamenco' in extensions:
+            flamenco_box = project_box.column()
+            self.draw_flamenco_buttons(flamenco_box, self.flamenco_manager, context)
 
     def draw_subscribe_button(self, layout):
         layout.operator('pillar.subscribe', icon='WORLD')
@@ -328,12 +389,11 @@ class BlenderCloudPreferences(AddonPreferences):
         else:
             row_pull.label('Cloud Sync is running.')
 
-    def draw_attract_buttons(self, attract_box, bcp: BlenderCloudProjectGroup):
-        attract_row = attract_box.row(align=True)
-        attract_row.label('Attract', icon_value=icon('CLOUD'))
+    def draw_project_selector(self, project_box, bcp: BlenderCloudProjectGroup):
+        project_row = project_box.row(align=True)
+        project_row.label('Project settings', icon_value=icon('CLOUD'))
 
-        attract_row.enabled = bcp.status in {'NONE', 'IDLE'}
-        row_buttons = attract_row.row(align=True)
+        row_buttons = project_row.row(align=True)
 
         projects = bcp.available_projects
         project = bcp.project
@@ -350,27 +410,38 @@ class BlenderCloudPreferences(AddonPreferences):
         else:
             row_buttons.label('Fetching available projects.')
 
-        attract_box.prop(self, 'attract_project_local_path')
+        enabled_for = project_extensions(project)
+        if project:
+            if enabled_for:
+                project_box.label('This project is set up for: %s' %
+                                  ', '.join(sorted(enabled_for)))
+            else:
+                project_box.label('This project is not set up for Attract or Flamenco')
+
+    def draw_attract_buttons(self, attract_box, bcp: BlenderCloudProjectGroup):
+        header_row = attract_box.row(align=True)
+        header_row.label('Attract:', icon_value=icon('CLOUD'))
+        attract_box.prop(self, 'attract_project_local_path',
+                         text='Local Attract project path')
 
     def draw_flamenco_buttons(self, flamenco_box, bcp: flamenco.FlamencoManagerGroup, context):
-        flamenco_row = flamenco_box.row(align=True)
-        flamenco_row.label('Flamenco', icon_value=icon('CLOUD'))
+        header_row = flamenco_box.row(align=True)
+        header_row.label('Flamenco:', icon_value=icon('CLOUD'))
 
-        flamenco_row.enabled = bcp.status in {'NONE', 'IDLE'}
-        row_buttons = flamenco_row.row(align=True)
+        manager_box = flamenco_box.row(align=True)
 
         if bcp.status in {'NONE', 'IDLE'}:
             if not bcp.available_managers or not bcp.manager:
-                row_buttons.operator('flamenco.managers',
+                manager_box.operator('flamenco.managers',
                                      text='Find Flamenco Managers',
                                      icon='FILE_REFRESH')
             else:
-                row_buttons.prop(bcp, 'manager', text='Manager')
-                row_buttons.operator('flamenco.managers',
+                manager_box.prop(bcp, 'manager', text='Manager')
+                manager_box.operator('flamenco.managers',
                                      text='',
                                      icon='FILE_REFRESH')
         else:
-            row_buttons.label('Fetching available managers.')
+            manager_box.label('Fetching available managers.')
 
         path_box = flamenco_box.row(align=True)
         path_box.prop(self, 'flamenco_job_file_path')
@@ -399,11 +470,6 @@ class BlenderCloudPreferences(AddonPreferences):
                            'unable to give output path example.')
 
         flamenco_box.prop(self, 'flamenco_open_browser_after_submit')
-
-        # TODO: make a reusable way to select projects, and use that for Attract and Flamenco.
-        note_box = flamenco_box.column(align=True)
-        note_box.label('NOTE: For now, Flamenco uses the same project as Attract.')
-        note_box.label('This will change in a future version of the add-on.')
 
 
 class PillarCredentialsUpdate(pillar.PillarOperatorMixin,
@@ -488,7 +554,7 @@ class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
 
         self.log.info('Going to fetch projects for user %s', self.user_id)
 
-        preferences().attract_project.status = 'FETCHING'
+        preferences().project.status = 'FETCHING'
 
         # Get all projects, except the home project.
         projects_user = await pillar_call(
@@ -497,7 +563,8 @@ class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
                        'category': {'$ne': 'home'}},
              'sort': '-_created',
              'projection': {'_id': True,
-                            'name': True},
+                            'name': True,
+                            'extension_props': True},
              })
 
         projects_shared = await pillar_call(
@@ -506,20 +573,34 @@ class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
                        'permissions.groups.group': {'$in': self.db_user.groups}},
              'sort': '-_created',
              'projection': {'_id': True,
-                            'name': True},
+                            'name': True,
+                            'extension_props': True},
              })
 
         # We need to convert to regular dicts before storing in ID properties.
         # Also don't store more properties than we need.
-        projects = [{'_id': p['_id'], 'name': p['name']} for p in projects_user['_items']] + \
-                   [{'_id': p['_id'], 'name': p['name']} for p in projects_shared['_items']]
+        def reduce_properties(project_list):
+            for p in project_list:
+                p = p.to_dict()
+                extension_props = p.get('extension_props', {})
+                enabled_for = list(extension_props.keys())
 
-        preferences().attract_project.available_projects = projects
+                self._log.debug('Project %r is enabled for %s', p['name'], enabled_for)
+                yield {
+                    '_id': p['_id'],
+                    'name': p['name'],
+                    'enabled_for': enabled_for,
+                }
+
+        projects = list(reduce_properties(projects_user['_items'])) + \
+                   list(reduce_properties(projects_shared['_items']))
+
+        preferences().project.available_projects = projects
 
         self.quit()
 
     def quit(self):
-        preferences().attract_project.status = 'IDLE'
+        preferences().project.status = 'IDLE'
         super().quit()
 
 

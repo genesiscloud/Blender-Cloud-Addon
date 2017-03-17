@@ -172,6 +172,11 @@ def callback_disable():
     if not cb_handle:
         return
 
-    bpy.types.SpaceSequenceEditor.draw_handler_remove(cb_handle[0], 'WINDOW')
+    try:
+        bpy.types.SpaceSequenceEditor.draw_handler_remove(cb_handle[0], 'WINDOW')
+    except ValueError:
+        # Thrown when already removed.
+        pass
+    cb_handle.clear()
 
     tag_redraw_all_sequencer_editors()

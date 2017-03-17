@@ -94,6 +94,8 @@ def register():
     image_sharing.register()
     attract.register()
 
+    blender.handle_project_update()
+
 
 def _monkey_patch_requests():
     """Monkey-patch old versions of Requests.

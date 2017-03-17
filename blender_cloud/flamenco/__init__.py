@@ -34,6 +34,9 @@ from ..utils import pyside_cache, redraw
 
 log = logging.getLogger(__name__)
 
+# Global flag used to determine whether panels etc. can be drawn.
+flamenco_is_active = False
+
 
 @pyside_cache('manager')
 def available_managers(self, context):
@@ -73,8 +76,15 @@ class FlamencoManagerGroup(PropertyGroup):
         self['available_managers'] = new_managers
 
 
+class FlamencoPollMixin:
+    @classmethod
+    def poll(cls, context):
+        return flamenco_is_active
+
+
 class FLAMENCO_OT_fmanagers(async_loop.AsyncModalOperatorMixin,
                             pillar.AuthenticatedPillarOperatorMixin,
+                            FlamencoPollMixin,
                             Operator):
     """Fetches the Flamenco Managers available to the user"""
     bl_idname = 'flamenco.managers'
@@ -115,6 +125,7 @@ class FLAMENCO_OT_fmanagers(async_loop.AsyncModalOperatorMixin,
 
 class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                          pillar.AuthenticatedPillarOperatorMixin,
+                         FlamencoPollMixin,
                          Operator):
     """Performs a Blender render on Flamenco."""
     bl_idname = 'flamenco.render'
@@ -176,7 +187,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         try:
             job_info = await create_job(self.user_id,
-                                        prefs.attract_project.project,
+                                        prefs.project.project,
                                         prefs.flamenco_manager.manager,
                                         scene.flamenco_render_job_type,
                                         settings,
@@ -308,7 +319,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         return outfile, missing_sources
 
 
-class FLAMENCO_OT_scene_to_frame_range(Operator):
+class FLAMENCO_OT_scene_to_frame_range(FlamencoPollMixin, Operator):
     """Sets the scene frame range as the Flamenco render frame range."""
     bl_idname = 'flamenco.scene_to_frame_range'
     bl_label = 'Sets the scene frame range as the Flamenco render frame range'
@@ -321,6 +332,7 @@ class FLAMENCO_OT_scene_to_frame_range(Operator):
 
 
 class FLAMENCO_OT_copy_files(Operator,
+                             FlamencoPollMixin,
                              async_loop.AsyncModalOperatorMixin):
     """Uses BAM to copy the current blendfile + dependencies to the target directory."""
     bl_idname = 'flamenco.copy_files'
@@ -491,7 +503,7 @@ def render_output_path(context, filepath: Path = None) -> typing.Optional[PurePa
     )
 
 
-class FLAMENCO_PT_render(bpy.types.Panel):
+class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
     bl_label = "Flamenco Render"
     bl_space_type = 'PROPERTIES'
     bl_region_type = 'WINDOW'
@@ -556,6 +568,22 @@ class FLAMENCO_PT_render(bpy.types.Panel):
                 layout.label('Unknown Flamenco status %s' % flamenco_status)
 
 
+def activate():
+    """Activates draw callbacks, menu items etc. for Flamenco."""
+
+    global flamenco_is_active
+    log.info('Activating Flamenco')
+    flamenco_is_active = True
+
+
+def deactivate():
+    """Deactivates draw callbacks, menu items etc. for Flamenco."""
+
+    global flamenco_is_active
+    log.info('Deactivating Flamenco')
+    flamenco_is_active = False
+
+
 def register():
     from ..utils import redraw
 
@@ -615,6 +643,7 @@ def register():
 
 
 def unregister():
+    deactivate()
     bpy.utils.unregister_module(__name__)
 
     try:

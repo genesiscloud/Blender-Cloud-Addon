@@ -60,6 +60,9 @@ from bpy.types import Operator, Panel, AddonPreferences
 
 log = logging.getLogger(__name__)
 
+# Global flag used to determine whether panels etc. can be drawn.
+attract_is_active = False
+
 
 def active_strip(context):
     try:
@@ -139,6 +142,9 @@ def shot_id_use(strips):
 def compute_strip_conflicts(scene):
     """Sets the strip property atc_object_id_conflict for each strip."""
 
+    if not attract_is_active:
+        return
+
     if not scene or not scene.sequence_editor or not scene.sequence_editor.sequences_all:
         return
 
@@ -161,7 +167,13 @@ def scene_update_post_handler(scene):
     compute_strip_conflicts(scene)
 
 
-class ToolsPanel(Panel):
+class AttractPollMixin:
+    @classmethod
+    def poll(cls, context):
+        return attract_is_active
+
+
+class ToolsPanel(AttractPollMixin, Panel):
     bl_label = 'Attract'
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
@@ -238,7 +250,7 @@ class ToolsPanel(Panel):
             layout.operator(ATTRACT_OT_submit_all.bl_idname)
 
 
-class AttractOperatorMixin:
+class AttractOperatorMixin(AttractPollMixin):
     """Mix-in class for all Attract operators."""
 
     def _project_needs_setup_error(self):
@@ -261,7 +273,7 @@ class AttractOperatorMixin:
         from .. import pillar, blender
 
         prefs = blender.preferences()
-        project = self.find_project(prefs.attract_project.project)
+        project = self.find_project(prefs.project.project)
 
         # FIXME: Eve doesn't seem to handle the $elemMatch projection properly,
         # even though it works fine in MongoDB itself. As a result, we have to
@@ -295,7 +307,7 @@ class AttractOperatorMixin:
                                'cut_in_timeline_in_frames': strip.frame_final_start},
                 'order': 0,
                 'node_type': 'attract_shot',
-                'project': blender.preferences().attract_project.project,
+                'project': blender.preferences().project.project,
                 'user': user_uuid}
 
         # Create a Node item with the attract API
@@ -373,7 +385,7 @@ class AttractShotFetchUpdate(AttractOperatorMixin, Operator):
 
     @classmethod
     def poll(cls, context):
-        return any(selected_shots(context))
+        return AttractOperatorMixin.poll(context) and any(selected_shots(context))
 
     def execute(self, context):
         for strip in selected_shots(context):
@@ -393,6 +405,9 @@ class AttractShotRelink(AttractShotFetchUpdate):
 
     @classmethod
     def poll(cls, context):
+        if not AttractOperatorMixin.poll(context):
+            return False
+
         strip = active_strip(context)
         return strip is not None and not getattr(strip, 'atc_object_id', None)
 
@@ -433,7 +448,8 @@ class ATTRACT_OT_shot_open_in_browser(AttractOperatorMixin, Operator):
 
     @classmethod
     def poll(cls, context):
-        return bool(context.selected_sequences and active_strip(context))
+        return AttractOperatorMixin.poll(context) and \
+               bool(context.selected_sequences and active_strip(context))
 
     def execute(self, context):
         from ..blender import PILLAR_WEB_SERVER_URL
@@ -459,7 +475,8 @@ class AttractShotDelete(AttractOperatorMixin, Operator):
 
     @classmethod
     def poll(cls, context):
-        return bool(context.selected_sequences)
+        return AttractOperatorMixin.poll(context) and \
+               bool(context.selected_sequences)
 
     def execute(self, context):
         from .. import pillar
@@ -511,7 +528,8 @@ class AttractStripUnlink(AttractOperatorMixin, Operator):
 
     @classmethod
     def poll(cls, context):
-        return bool(context.selected_sequences)
+        return AttractOperatorMixin.poll(context) and \
+               bool(context.selected_sequences)
 
     def execute(self, context):
         unlinked_ids = set()
@@ -554,7 +572,8 @@ class AttractShotSubmitSelected(AttractOperatorMixin, Operator):
 
     @classmethod
     def poll(cls, context):
-        return bool(context.selected_sequences)
+        return AttractOperatorMixin.poll(context) and \
+               bool(context.selected_sequences)
 
     def execute(self, context):
         # Check that the project is set up for Attract.
@@ -610,7 +629,8 @@ class ATTRACT_OT_open_meta_blendfile(AttractOperatorMixin, Operator):
 
     @classmethod
     def poll(cls, context):
-        return bool(any(cls.filename_from_metadata(s) for s in context.selected_sequences))
+        return AttractOperatorMixin.poll(context) and \
+               bool(any(cls.filename_from_metadata(s) for s in context.selected_sequences))
 
     @staticmethod
     def filename_from_metadata(strip):
@@ -677,7 +697,7 @@ class ATTRACT_OT_make_shot_thumbnail(AttractOperatorMixin,
 
     @classmethod
     def poll(cls, context):
-        return bool(context.selected_sequences)
+        return AttractOperatorMixin.poll(context) and bool(context.selected_sequences)
 
     @contextlib.contextmanager
     def thumbnail_render_settings(self, context, thumbnail_width=512):
@@ -843,7 +863,7 @@ class ATTRACT_OT_make_shot_thumbnail(AttractOperatorMixin,
         from .. import blender
 
         prefs = blender.preferences()
-        project = self.find_project(prefs.attract_project.project)
+        project = self.find_project(prefs.project.project)
 
         self.log.info('Uploading file %s', filename)
         resp = await pillar.pillar_call(
@@ -873,7 +893,8 @@ class ATTRACT_OT_copy_id_to_clipboard(AttractOperatorMixin, Operator):
 
     @classmethod
     def poll(cls, context):
-        return bool(context.selected_sequences and active_strip(context))
+        return AttractOperatorMixin.poll(context) and \
+               bool(context.selected_sequences and active_strip(context))
 
     def execute(self, context):
         strip = active_strip(context)
@@ -903,6 +924,29 @@ def draw_strip_movie_meta(self, context):
     sfra = meta.get('START_FRAME', '?')
     efra = meta.get('END_FRAME', '?')
     box.label('Original Frame Range: %s-%s' % (sfra, efra))
+
+
+def activate():
+    global attract_is_active
+
+    log.info('Activating Attract')
+    attract_is_active = True
+    bpy.app.handlers.scene_update_post.append(scene_update_post_handler)
+    draw.callback_enable()
+
+
+def deactivate():
+    global attract_is_active
+
+    log.info('Deactivating Attract')
+    attract_is_active = False
+    draw.callback_disable()
+
+    try:
+        bpy.app.handlers.scene_update_post.remove(scene_update_post_handler)
+    except ValueError:
+        # This is thrown when scene_update_post_handler does not exist in the handler list.
+        pass
 
 
 def register():
@@ -942,13 +986,9 @@ def register():
     bpy.utils.register_class(ATTRACT_OT_make_shot_thumbnail)
     bpy.utils.register_class(ATTRACT_OT_copy_id_to_clipboard)
 
-    bpy.app.handlers.scene_update_post.append(scene_update_post_handler)
-    draw.callback_enable()
-
 
 def unregister():
-    draw.callback_disable()
-    bpy.app.handlers.scene_update_post.remove(scene_update_post_handler)
+    deactivate()
     bpy.utils.unregister_module(__name__)
     del bpy.types.Sequence.atc_is_synced
     del bpy.types.Sequence.atc_object_id
