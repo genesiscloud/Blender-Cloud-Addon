@@ -364,8 +364,13 @@ class FLAMENCO_OT_copy_files(Operator,
         bpy.context.window_manager.flamenco_status = 'IDLE'
 
 
-class FLAMENCO_OT_explore_file_path(Operator):
-    """Opens the Flamenco job storage path in a file explorer."""
+class FLAMENCO_OT_explore_file_path(FlamencoPollMixin,
+                                    Operator):
+    """Opens the Flamenco job storage path in a file explorer.
+
+    If the path cannot be found, this operator tries to open its parent.
+    """
+
     bl_idname = 'flamenco.explore_file_path'
     bl_label = 'Open in file explorer'
     bl_description = __doc__.rstrip('.')
@@ -374,15 +379,30 @@ class FLAMENCO_OT_explore_file_path(Operator):
 
     def execute(self, context):
         import platform
-        import subprocess
-        import os
+        import pathlib
+
+        # Possibly open a parent of the path
+        to_open = pathlib.Path(self.path)
+        while to_open.parent != to_open:  # while we're not at the root
+            if to_open.exists():
+                break
+            to_open = to_open.parent
+        else:
+            self.report({'ERROR'}, 'Unable to open %s or any of its parents.' % self.path)
+            return {'CANCELLED'}
+        to_open = str(to_open)
 
         if platform.system() == "Windows":
-            os.startfile(self.path)
+            import os
+            os.startfile(to_open)
+
         elif platform.system() == "Darwin":
-            subprocess.Popen(["open", self.path])
+            import subprocess
+            subprocess.Popen(["open", to_open])
+
         else:
-            subprocess.Popen(["xdg-open", self.path])
+            import subprocess
+            subprocess.Popen(["xdg-open", to_open])
 
         return {'FINISHED'}
 
