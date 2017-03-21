@@ -9,7 +9,7 @@
 
 ## Version 1.6.2 (2017-03-17)
 
-- Flamenco: when opening non-existing file path, open parent instead - Sybren A. Stüvel
+- Flamenco: when opening non-existing file path, open parent instead
 - Fix T50954: Improve Blender Cloud add-on project selector
 
 
