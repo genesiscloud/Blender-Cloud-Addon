@@ -14,4 +14,6 @@ sed "s/'version': ([^)]*)/'version': ($BL_INFO_VER)/" -i blender_cloud/__init__.
 
 git diff
 echo
-echo "Don't forget to commit!"
+echo "Don't forget to commit and tag:"
+echo git commit -m \'Bumped version to $VERSION\' setup.py blender_cloud/__init__.py
+echo git tag -a version-$VERSION -m \'Tagged version $VERSION\'
