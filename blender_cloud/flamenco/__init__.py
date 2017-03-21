@@ -514,7 +514,7 @@ def render_output_path(context, filepath: Path = None) -> typing.Optional[PurePa
         filepath = Path(context.blend_data.filepath)
 
     return _render_output_path(
-        prefs.attract_project_local_path,
+        prefs.cloud_project_local_path,
         filepath,
         prefs.flamenco_job_output_strip_components,
         prefs.flamenco_job_output_path,

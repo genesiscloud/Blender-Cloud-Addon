@@ -220,7 +220,7 @@ class BlenderCloudPreferences(AddonPreferences):
     # can switch projects and the Attract and Flamenco properties switch with it.
     project = PointerProperty(type=BlenderCloudProjectGroup)
 
-    attract_project_local_path = StringProperty(
+    cloud_project_local_path = StringProperty(
         name='Local Project Path',
         description='Local path of your Attract project, used to search for blend files; '
                     'usually best to set to an absolute path',
@@ -345,11 +345,6 @@ class BlenderCloudPreferences(AddonPreferences):
         self.draw_project_selector(project_box, self.project)
         extensions = project_extensions(self.project.project)
 
-        # Attract stuff
-        if 'attract' in extensions:
-            attract_box = project_box.column()
-            self.draw_attract_buttons(attract_box, self.project)
-
         # Flamenco stuff
         if 'flamenco' in extensions:
             flamenco_box = project_box.column()
@@ -411,18 +406,19 @@ class BlenderCloudPreferences(AddonPreferences):
             row_buttons.label('Fetching available projects.')
 
         enabled_for = project_extensions(project)
-        if project:
-            if enabled_for:
-                project_box.label('This project is set up for: %s' %
-                                  ', '.join(sorted(enabled_for)))
-            else:
-                project_box.label('This project is not set up for Attract or Flamenco')
+        if not project:
+            return
 
-    def draw_attract_buttons(self, attract_box, bcp: BlenderCloudProjectGroup):
-        header_row = attract_box.row(align=True)
-        header_row.label('Attract:', icon_value=icon('CLOUD'))
-        attract_box.prop(self, 'attract_project_local_path',
-                         text='Local Attract project path')
+        if not enabled_for:
+            project_box.label('This project is not set up for Attract or Flamenco')
+            return
+
+        project_box.label('This project is set up for: %s' %
+                          ', '.join(sorted(enabled_for)))
+
+        # This is only needed when the project is set up for either Attract or Flamenco.
+        project_box.prop(self, 'cloud_project_local_path',
+                         text='Local Cloud project path')
 
     def draw_flamenco_buttons(self, flamenco_box, bcp: flamenco.FlamencoManagerGroup, context):
         header_row = flamenco_box.row(align=True)
