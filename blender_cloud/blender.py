@@ -228,6 +228,11 @@ class BlenderCloudPreferences(AddonPreferences):
         default='//../')
 
     flamenco_manager = PointerProperty(type=flamenco.FlamencoManagerGroup)
+    flamenco_exclude_filter = StringProperty(
+        name='File Exclude Filter',
+        description='Filter like "*.abc;*.mkv" to prevent certain files to be packed '
+                    'into the output directory',
+        default='')
     # TODO: before making Flamenco public, change the defaults to something less Institute-specific.
     # NOTE: The assumption is that the workers can also find the files in the same path.
     #       This assumption is true for the Blender Institute.
@@ -424,7 +429,9 @@ class BlenderCloudPreferences(AddonPreferences):
         header_row = flamenco_box.row(align=True)
         header_row.label('Flamenco:', icon_value=icon('CLOUD'))
 
-        manager_box = flamenco_box.row(align=True)
+        manager_split = flamenco_box.split(0.32, align=True)
+        manager_split.label('Manager:')
+        manager_box = manager_split.row(align=True)
 
         if bcp.status in {'NONE', 'IDLE'}:
             if not bcp.available_managers or not bcp.manager:
@@ -432,26 +439,33 @@ class BlenderCloudPreferences(AddonPreferences):
                                      text='Find Flamenco Managers',
                                      icon='FILE_REFRESH')
             else:
-                manager_box.prop(bcp, 'manager', text='Manager')
+                manager_box.prop(bcp, 'manager', text='')
                 manager_box.operator('flamenco.managers',
                                      text='',
                                      icon='FILE_REFRESH')
         else:
             manager_box.label('Fetching available managers.')
 
-        path_box = flamenco_box.row(align=True)
-        path_box.prop(self, 'flamenco_job_file_path')
+        path_split = flamenco_box.split(0.32, align=True)
+        path_split.label(text='Job File Path:')
+        path_box = path_split.row(align=True)
+        path_box.prop(self, 'flamenco_job_file_path', text='')
         props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
         props.path = self.flamenco_job_file_path
 
         job_output_box = flamenco_box.column(align=True)
-        path_box = job_output_box.row(align=True)
-        path_box.prop(self, 'flamenco_job_output_path')
+        path_split = job_output_box.split(0.32, align=True)
+        path_split.label(text='Job Output Path:')
+        path_box = path_split.row(align=True)
+        path_box.prop(self, 'flamenco_job_output_path', text='')
         props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
         props.path = self.flamenco_job_output_path
 
-        job_output_box.prop(self, 'flamenco_job_output_strip_components',
-                            text='Strip Components')
+        job_output_box.prop(self, 'flamenco_exclude_filter')
+
+        prop_split = job_output_box.split(0.32, align=True)
+        prop_split.label('Strip Components:')
+        prop_split.prop(self, 'flamenco_job_output_strip_components', text='')
 
         from .flamenco import render_output_path
 

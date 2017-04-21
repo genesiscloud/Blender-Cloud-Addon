@@ -1,5 +1,13 @@
 # Blender Cloud changelog
 
+
+## Version 1.6.4 (2017-04-21)
+
+- Added file exclusion filter for Flamenco. A filter like "*.abc;*.mkv;*.mov" can be
+  used to prevent certain files from being copied to the job storage directory.
+  Requires a Blender that is bundled with BAM 1.1.7 or newer.
+
+
 ## Version 1.6.3 (2017-03-21)
 
 - Fixed bug where local project path wasn't shown for projects only set up for Flamenco

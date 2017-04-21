@@ -14,7 +14,8 @@ class CommandExecutionError(Exception):
     pass
 
 
-async def bam_copy(base_blendfile: Path, target_blendfile: Path) -> typing.List[Path]:
+async def bam_copy(base_blendfile: Path, target_blendfile: Path,
+                   exclusion_filter: str) -> typing.List[Path]:
     """Uses BAM to copy the given file and dependencies to the target blendfile.
 
     Due to the way blendfile_pack.py is programmed/structured, we cannot import it
@@ -40,6 +41,9 @@ async def bam_copy(base_blendfile: Path, target_blendfile: Path) -> typing.List[
         '--output', str(target_blendfile),
         '--mode', 'FILE',
     ]
+
+    if exclusion_filter:
+        args.extend(['--exclude', exclusion_filter])
 
     cmd_to_log = ' '.join(shlex.quote(s) for s in args)
     log.info('Executing %s', cmd_to_log)

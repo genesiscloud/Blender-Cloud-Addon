@@ -300,6 +300,8 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         outdir = Path(prefs.flamenco_job_file_path) / unique_dir
         outfile = outdir / filepath.name
 
+        exclusion_filter = prefs.flamenco_exclude_filter or None
+
         try:
             outdir.mkdir(parents=True)
         except Exception as ex:
@@ -309,7 +311,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             return None, []
 
         try:
-            missing_sources = await bam_interface.bam_copy(filepath, outfile)
+            missing_sources = await bam_interface.bam_copy(filepath, outfile, exclusion_filter)
         except bam_interface.CommandExecutionError as ex:
             self.log.exception('Unable to execute BAM pack')
             self.report({'ERROR'}, 'Unable to execute BAM pack: %s' % ex)
