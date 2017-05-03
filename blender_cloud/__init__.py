@@ -65,21 +65,28 @@ def register():
 
         def reload_mod(name):
             modname = '%s.%s' % (__name__, name)
-            module = importlib.reload(sys.modules[modname])
-            sys.modules[modname] = module
-            return module
+            try:
+                old_module = sys.modules[modname]
+            except KeyError:
+                # Wasn't loaded before -- can happen after an upgrade.
+                new_module = importlib.import_module(modname)
+            else:
+                new_module = importlib.reload(old_module)
+
+            sys.modules[modname] = new_module
+            return new_module
 
         reload_mod('blendfile')
         reload_mod('home_project')
         reload_mod('utils')
 
-        blender = reload_mod('blender')
         async_loop = reload_mod('async_loop')
+        flamenco = reload_mod('flamenco')
+        attract = reload_mod('attract')
         texture_browser = reload_mod('texture_browser')
         settings_sync = reload_mod('settings_sync')
         image_sharing = reload_mod('image_sharing')
-        attract = reload_mod('attract')
-        flamenco = reload_mod('flamenco')
+        blender = reload_mod('blender')
     else:
         from . import (blender, texture_browser, async_loop, settings_sync, blendfile, home_project,
                        image_sharing, attract, flamenco)
@@ -88,11 +95,11 @@ def register():
     async_loop.register()
 
     flamenco.register()
+    attract.register()
     texture_browser.register()
-    blender.register()
     settings_sync.register()
     image_sharing.register()
-    attract.register()
+    blender.register()
 
     blender.handle_project_update()
 
