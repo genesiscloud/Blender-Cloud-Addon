@@ -477,7 +477,13 @@ def _render_output_path(
         return None
 
     try:
-        proj_rel = blend_filepath.parent.relative_to(project_path)
+        blend_abspath = blend_filepath.resolve().absolute()
+    except FileNotFoundError:
+        # Path.resolve() will raise a FileNotFoundError if the path doesn't exist.
+        return None
+
+    try:
+        proj_rel = blend_abspath.parent.relative_to(project_path)
     except ValueError:
         return None
 
