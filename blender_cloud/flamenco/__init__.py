@@ -596,6 +596,7 @@ def activate():
     global flamenco_is_active
     log.info('Activating Flamenco')
     flamenco_is_active = True
+    _render_output_path.cache_clear()
 
 
 def deactivate():
@@ -604,6 +605,7 @@ def deactivate():
     global flamenco_is_active
     log.info('Deactivating Flamenco')
     flamenco_is_active = False
+    _render_output_path.cache_clear()
 
 
 def register():
