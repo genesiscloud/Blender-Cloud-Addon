@@ -4,6 +4,7 @@
 ## Version 1.6.4 (in development)
 
 - Fixed reloading after upgrading from 1.4.4 (our last public release).
+- Fixed bug handling a symlinked project path.
 
 
 ## Version 1.6.4 (2017-04-21)
