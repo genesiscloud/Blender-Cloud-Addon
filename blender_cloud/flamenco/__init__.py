@@ -139,6 +139,9 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         if not await self.authenticate(context):
             return
 
+        import pillarsdk.exceptions
+        from .sdk import Manager
+        from ..pillar import pillar_call
         from ..blender import preferences
 
         scene = context.scene
@@ -160,15 +163,26 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         if not outfile:
             return
 
-        # Create the job at Flamenco Server.
+        # Fetch Manager for doing path replacement.
+        self.log.info('Going to fetch manager %s', self.user_id)
         prefs = preferences()
 
+        manager_id = prefs.flamenco_manager.manager
+        try:
+            manager = await pillar_call(Manager.find, manager_id)
+        except pillarsdk.exceptions.ResourceNotFound:
+            self.report({'ERROR'}, 'Manager %s not found, refresh your managers in '
+                                   'the Blender Cloud add-on settings.' % manager_id)
+            self.quit()
+            return
+
+        # Create the job at Flamenco Server.
         context.window_manager.flamenco_status = 'COMMUNICATING'
         settings = {'blender_cmd': '{blender}',
                     'chunk_size': scene.flamenco_render_fchunk_size,
-                    'filepath': str(outfile),
+                    'filepath': manager.replace_path(outfile),
                     'frames': scene.flamenco_render_frame_range,
-                    'render_output': str(render_output),
+                    'render_output': manager.replace_path(render_output),
                     }
 
         # Add extra settings specific to the job type
@@ -188,7 +202,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         try:
             job_info = await create_job(self.user_id,
                                         prefs.project.project,
-                                        prefs.flamenco_manager.manager,
+                                        manager_id,
                                         scene.flamenco_render_job_type,
                                         settings,
                                         'Render %s' % filepath.name,
