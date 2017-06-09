@@ -1,7 +1,7 @@
 # Blender Cloud changelog
 
 
-## Version 1.6.5 (in development)
+## Version 1.7.0 (2017-06-09)
 
 - Fixed reloading after upgrading from 1.4.4 (our last public release).
 - Fixed bug handling a symlinked project path.
