@@ -457,7 +457,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
 
         return menu_item
 
-    def update_menu_item(self, node, *args) -> MenuItem:
+    def update_menu_item(self, node, *args):
         node_uuid = node['_id']
 
         # Just make this thread-safe to be on the safe side.
