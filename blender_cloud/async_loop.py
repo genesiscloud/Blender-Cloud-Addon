@@ -33,15 +33,9 @@ _loop_kicking_operator_running = False
 
 
 def setup_asyncio_executor():
-    """Sets up AsyncIO to run on a single thread.
+    """Sets up AsyncIO to run properly on each platform."""
 
-    This ensures that only one Pillar HTTP call is performed at the same time. Other
-    calls that could be performed in parallel are queued, and thus we can
-    reliably cancel them.
-    """
     import sys
-
-    executor = concurrent.futures.ThreadPoolExecutor()
 
     if sys.platform == 'win32':
         asyncio.get_event_loop().close()
@@ -52,6 +46,8 @@ def setup_asyncio_executor():
         asyncio.set_event_loop(loop)
     else:
         loop = asyncio.get_event_loop()
+
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
     loop.set_default_executor(executor)
     # loop.set_debug(True)
 
