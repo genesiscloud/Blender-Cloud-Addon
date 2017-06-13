@@ -226,9 +226,13 @@ async def pillar_call(pillar_func, *args, caching=True, **kwargs):
     # Use explicit calls to acquire() and release() so that we have more control over
     # how long we wait and how we handle timeouts.
     try:
-        asyncio.wait_for(pillar_semaphore.acquire(), timeout=60, loop=loop)
+        await asyncio.wait_for(pillar_semaphore.acquire(), timeout=10, loop=loop)
     except asyncio.TimeoutError:
-        raise RuntimeError('Timeout waiting for Pillar Semaphore!')
+        log.info('Waiting for semaphore to call %s', pillar_func.__name__)
+        try:
+            await asyncio.wait_for(pillar_semaphore.acquire(), timeout=50, loop=loop)
+        except asyncio.TimeoutError:
+            raise RuntimeError('Timeout waiting for Pillar Semaphore!')
 
     try:
         return await loop.run_in_executor(None, partial)
