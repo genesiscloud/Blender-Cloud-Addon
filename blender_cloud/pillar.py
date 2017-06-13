@@ -200,8 +200,11 @@ def pillar_api(pillar_endpoint: str = None, caching=True) -> pillarsdk.Api:
     return _pillar_api[caching]
 
 
-# No more than this many Pillar calls should be made simultaneously
-pillar_semaphore = asyncio.Semaphore(3)
+# This is an asyncio.Semaphore object, which is late-instantiated to be sure
+# the asyncio loop has been created properly. On Windows we create a new one,
+# which can cause this semaphore to still be linked against the old default
+# loop.
+pillar_semaphore = None
 
 
 async def pillar_call(pillar_func, *args, caching=True, **kwargs):
@@ -214,8 +217,17 @@ async def pillar_call(pillar_func, *args, caching=True, **kwargs):
     partial = functools.partial(pillar_func, *args, api=pillar_api(caching=caching), **kwargs)
     loop = asyncio.get_event_loop()
 
-    async with pillar_semaphore:
+    # Use explicit calls to acquire() and release() so that we have more control over
+    # how long we wait and how we handle timeouts.
+    try:
+        asyncio.wait_for(pillar_semaphore.acquire(), timeout=60, loop=loop)
+    except asyncio.TimeoutError:
+        raise RuntimeError('Timeout waiting for Pillar Semaphore!')
+
+    try:
         return await loop.run_in_executor(None, partial)
+    finally:
+        pillar_semaphore.release()
 
 
 def sync_call(pillar_func, *args, caching=True, **kwargs):
@@ -534,7 +546,8 @@ async def fetch_texture_thumbs(parent_node_uuid: str, desired_size: str,
              for texture_node in texture_nodes)
 
     # raises any exception from failed handle_texture_node() calls.
-    await asyncio.gather(*coros)
+    loop = asyncio.get_event_loop()
+    await asyncio.gather(*coros, loop=loop)
 
     log.info('fetch_texture_thumbs: Done downloading texture thumbnails')
 
@@ -747,7 +760,8 @@ async def download_texture(texture_node,
                                     future=future)
         downloaders.append(dlr)
 
-    return await asyncio.gather(*downloaders, return_exceptions=True)
+    loop = asyncio.get_event_loop()
+    return await asyncio.gather(*downloaders, return_exceptions=True, loop=loop)
 
 
 async def upload_file(project_id: str, file_path: pathlib.Path, *,

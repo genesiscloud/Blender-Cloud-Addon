@@ -44,6 +44,7 @@ def setup_asyncio_executor():
     executor = concurrent.futures.ThreadPoolExecutor()
 
     if sys.platform == 'win32':
+        asyncio.get_event_loop().close()
         # On Windows, the default event loop is SelectorEventLoop, which does
         # not support subprocesses. ProactorEventLoop should be used instead.
         # Source: https://docs.python.org/3/library/asyncio-subprocess.html
@@ -53,6 +54,10 @@ def setup_asyncio_executor():
         loop = asyncio.get_event_loop()
     loop.set_default_executor(executor)
     # loop.set_debug(True)
+
+    from . import pillar
+    # No more than this many Pillar calls should be made simultaneously
+    pillar.pillar_semaphore = asyncio.Semaphore(3, loop=loop)
 
 
 def kick_async_loop(*args) -> bool:
