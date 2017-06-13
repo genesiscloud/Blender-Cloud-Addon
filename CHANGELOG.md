@@ -1,6 +1,11 @@
 # Blender Cloud changelog
 
 
+## Version 1.7.1 (in development)
+
+- Fixed asyncio issues on Windows
+
+
 ## Version 1.7.0 (2017-06-09)
 
 - Fixed reloading after upgrading from 1.4.4 (our last public release).
@@ -10,7 +15,7 @@
 
 ## Version 1.6.4 (2017-04-21)
 
-- Added file exclusion filter for Flamenco. A filter like "*.abc;*.mkv;*.mov" can be
+- Added file exclusion filter for Flamenco. A filter like `*.abc;*.mkv;*.mov` can be
   used to prevent certain files from being copied to the job storage directory.
   Requires a Blender that is bundled with BAM 1.1.7 or newer.
 
