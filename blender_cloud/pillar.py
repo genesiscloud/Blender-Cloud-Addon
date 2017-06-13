@@ -115,6 +115,12 @@ def with_existing_dir(filename: str, open_mode: str, encoding=None):
         yield file_object
 
 
+def _shorten(somestr: str, maxlen=40) -> str:
+    """Shortens strings for logging"""
+
+    return (somestr[:maxlen - 3] + '...') if len(somestr) > maxlen else somestr
+
+
 def save_as_json(pillar_resource, json_filename):
     with with_existing_dir(json_filename, 'w') as outfile:
         log.debug('Saving metadata to %r' % json_filename)
@@ -453,9 +459,9 @@ async def download_to_file(url, filename, *,
         log.debug('Downloading was cancelled before doing the GET')
         raise asyncio.CancelledError('Downloading was cancelled')
 
-    log.debug('Performing GET %s', url)
+    log.debug('Performing GET %s', _shorten(url))
     response = await loop.run_in_executor(None, perform_get_request)
-    log.debug('Status %i from GET %s', response.status_code, url)
+    log.debug('Status %i from GET %s', response.status_code, _shorten(url))
     response.raise_for_status()
 
     if response.status_code == 304:
@@ -469,9 +475,9 @@ async def download_to_file(url, filename, *,
         log.debug('Downloading was cancelled before downloading the GET response')
         raise asyncio.CancelledError('Downloading was cancelled')
 
-    log.debug('Downloading response of GET %s', url)
+    log.debug('Downloading response of GET %s', _shorten(url))
     await loop.run_in_executor(None, download_loop)
-    log.debug('Done downloading response of GET %s', url)
+    log.debug('Done downloading response of GET %s', _shorten(url))
 
     # We're done downloading, now we have something cached we can use.
     log.debug('Saving header cache to %s', header_store)
@@ -787,9 +793,9 @@ async def upload_file(project_id: str, file_path: pathlib.Path, *,
         log.debug('Uploading was cancelled before doing the POST')
         raise asyncio.CancelledError('Uploading was cancelled')
 
-    log.debug('Performing POST %s', url)
+    log.debug('Performing POST %s', _shorten(url))
     response = await loop.run_in_executor(None, upload)
-    log.debug('Status %i from POST %s', response.status_code, url)
+    log.debug('Status %i from POST %s', response.status_code, _shorten(url))
     response.raise_for_status()
 
     resp = response.json()
