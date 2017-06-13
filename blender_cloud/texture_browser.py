@@ -538,6 +538,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
             self.add_menu_item(node, None, 'SPINNER', texture_node['name'])
 
         def thumbnail_loaded(node, file_desc, thumb_path):
+            self.log.debug('Node %s thumbnail loaded', node['_id'])
             self.update_menu_item(node, file_desc, thumb_path)
 
         await pillar.fetch_texture_thumbs(node_uuid, 's', directory,
