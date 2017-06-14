@@ -32,8 +32,7 @@ import rna_prop_ui
 from . import pillar, async_loop, flamenco
 from .utils import pyside_cache, redraw
 
-PILLAR_WEB_SERVER_URL = 'https://cloud.blender.org/'
-# PILLAR_WEB_SERVER_URL = 'http://pillar-web:5001/'
+PILLAR_WEB_SERVER_URL = os.environ.get('BCLOUD_SERVER', 'https://cloud.blender.org/')
 PILLAR_SERVER_URL = '%sapi/' % PILLAR_WEB_SERVER_URL
 
 ADDON_NAME = 'blender_cloud'
