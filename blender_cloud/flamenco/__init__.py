@@ -363,10 +363,12 @@ class FLAMENCO_OT_copy_files(Operator,
         from ..blender import preferences
 
         context.window_manager.flamenco_status = 'PACKING'
+        exclusion_filter = preferences().flamenco_exclude_filter or None
 
         missing_sources = await bam_interface.bam_copy(
             Path(context.blend_data.filepath),
             Path(preferences().flamenco_job_file_path),
+            exclusion_filter
         )
 
         if missing_sources:
