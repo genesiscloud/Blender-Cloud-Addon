@@ -16,8 +16,6 @@ class Manager(List, Find):
         if self.path_replacement is None:
             return []
 
-        print('SORTING PATH REPLACEMENTS')
-
         items = self.path_replacement.to_dict().items()
 
         def by_length(item):
