@@ -101,6 +101,11 @@ class BuildWheels(Command):
             log.info('Downloading Pillar Python SDK wheel')
             self.download_wheel(requirements['pillarsdk'])
 
+        # Download BAM from pypi. This is required for compatibility with Blender 2.78.
+        if not list(self.wheels_path.glob('blender_bam*.whl')):
+            log.info('Downloading BAM wheel')
+            self.download_wheel(requirements['blender-bam'])
+
         # Build CacheControl.
         if not list(self.wheels_path.glob('CacheControl*.whl')):
             log.info('Building CacheControl in %s', self.cachecontrol_path)

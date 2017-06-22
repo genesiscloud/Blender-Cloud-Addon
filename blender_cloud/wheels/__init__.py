@@ -44,6 +44,12 @@ def load_wheel(module_name, fname_prefix):
                   module_name, module.__file__, fname_prefix)
         return
 
+    sys.path.append(wheel_filename(fname_prefix))
+    module = __import__(module_name)
+    log.debug('Loaded %s from %s', module_name, module.__file__)
+
+
+def wheel_filename(fname_prefix: str) -> str:
     path_pattern = os.path.join(my_dir, '%s*.whl' % fname_prefix)
     wheels = glob.glob(path_pattern)
     if not wheels:
@@ -51,9 +57,7 @@ def load_wheel(module_name, fname_prefix):
 
     # If there are multiple wheels that match, load the latest one.
     wheels.sort()
-    sys.path.append(wheels[-1])
-    module = __import__(module_name)
-    log.debug('Loaded %s from %s', module_name, module.__file__)
+    return wheels[-1]
 
 
 def load_wheels():

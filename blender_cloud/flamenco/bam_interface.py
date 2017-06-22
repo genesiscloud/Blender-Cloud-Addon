@@ -1,6 +1,5 @@
 """BAM packing interface for Flamenco."""
 
-import functools
 import logging
 from pathlib import Path
 import typing
@@ -15,26 +14,26 @@ class CommandExecutionError(Exception):
     pass
 
 
-if 'bam_supports_exclude_option' in locals():
-    locals()['bam_supports_exclude_option'].cache_clear()
+def wheel_pythonpath_278() -> str:
+    """Returns the value of a PYTHONPATH environment variable needed to run BAM from its wheel file.
 
-
-@functools.lru_cache(maxsize=1)
-def bam_supports_exclude_option() -> bool:
-    """Returns True if the version of BAM bundled with Blender supports --exclude.
-
-    This feature was added to BAM 1.1.7, so we can do a simple version check.
+    Workaround for Blender 2.78c not having io_blend_utils.pythonpath()
     """
 
-    try:
-        import io_blend_utils
-    except ImportError:
-        # If this happens, BAM won't work at all. However, this function can be called from
-        # the GUI; by being a bit careful while importing, we avoid breaking Blender's GUI.
-        log.exception('Error importing io_blend_utils module.')
-        return False
+    import os
+    from ..wheels import wheel_filename
 
-    return io_blend_utils.bl_info['version'] >= (1, 1, 7)
+    # Find the wheel to run.
+    wheelpath = wheel_filename('blender_bam')
+
+    log.info('Using wheel %s to run BAM-Pack', wheelpath)
+
+    # Update the PYTHONPATH to include that wheel.
+    existing_pypath = os.environ.get('PYTHONPATH', '')
+    if existing_pypath:
+        return os.pathsep.join((existing_pypath, wheelpath))
+
+    return wheelpath
 
 
 async def bam_copy(base_blendfile: Path, target_blendfile: Path,
@@ -66,18 +65,20 @@ async def bam_copy(base_blendfile: Path, target_blendfile: Path,
     ]
 
     if exclusion_filter:
-        if bam_supports_exclude_option():
-            args.extend(['--exclude', exclusion_filter])
-        else:
-            log.warning('Your version of Blender does not support the exclusion filter, '
-                        'copying all files.')
+        args.extend(['--exclude', exclusion_filter])
 
     cmd_to_log = ' '.join(shlex.quote(s) for s in args)
     log.info('Executing %s', cmd_to_log)
 
+    # Workaround for Blender 2.78c not having io_blend_utils.pythonpath()
+    if hasattr(io_blend_utils, 'pythonpath'):
+        pythonpath = io_blend_utils.pythonpath()
+    else:
+        pythonpath = wheel_pythonpath_278()
+
     proc = await asyncio.create_subprocess_exec(
         *args,
-        env={'PYTHONPATH': io_blend_utils.pythonpath()},
+        env={'PYTHONPATH': pythonpath},
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

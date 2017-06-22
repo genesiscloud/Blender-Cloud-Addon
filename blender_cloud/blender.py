@@ -461,16 +461,7 @@ class BlenderCloudPreferences(AddonPreferences):
         path_box.prop(self, 'flamenco_job_output_path', text='')
         props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
         props.path = self.flamenco_job_output_path
-
-        show_warning = bool(self.flamenco_exclude_filter and
-                            not bam_interface.bam_supports_exclude_option())
-        job_output_box.alert = show_warning
-        job_output_box.prop(self, 'flamenco_exclude_filter',
-                            icon='ERROR' if show_warning else 'NONE')
-        if show_warning:
-            job_output_box.label(
-                text='Warning, the exclusion filter requires a newer version of Blender!')
-        job_output_box.alert = False
+        job_output_box.prop(self, 'flamenco_exclude_filter')
 
         prop_split = job_output_box.split(0.32, align=True)
         prop_split.label('Strip Components:')

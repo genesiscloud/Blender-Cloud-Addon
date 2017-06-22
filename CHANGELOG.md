@@ -1,6 +1,11 @@
 # Blender Cloud changelog
 
 
+## Version 1.7.2 (in development)
+
+- Fixed compatibility with Blender 2.78c.
+
+
 ## Version 1.7.1 (2017-06-13)
 
 - Fixed asyncio issues on Windows
