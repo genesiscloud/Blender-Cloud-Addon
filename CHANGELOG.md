@@ -1,7 +1,7 @@
 # Blender Cloud changelog
 
 
-## Version 1.7.2 (in development)
+## Version 1.7.2 (2017-06-22)
 
 - Fixed compatibility with Blender 2.78c.
 
