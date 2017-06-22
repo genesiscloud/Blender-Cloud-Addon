@@ -25,12 +25,26 @@ import logging
 from pathlib import Path, PurePath
 import typing
 
+
+if "bpy" in locals():
+    import importlib
+
+    try:
+        bam_interface = importlib.reload(bam_interface)
+        sdk = importlib.reload(sdk)
+    except NameError:
+        from . import bam_interface, sdk
+else:
+    from . import bam_interface, sdk
+
+
 import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
 from bpy.props import StringProperty, EnumProperty, PointerProperty, BoolProperty, IntProperty
 
 from .. import async_loop, pillar
 from ..utils import pyside_cache, redraw
+
 
 log = logging.getLogger(__name__)
 
@@ -301,7 +315,6 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         from datetime import datetime
         from ..blender import preferences
-        from . import bam_interface
 
         prefs = preferences()
 
@@ -359,7 +372,6 @@ class FLAMENCO_OT_copy_files(Operator,
 
     async def async_execute(self, context):
         from pathlib import Path
-        from . import bam_interface
         from ..blender import preferences
 
         context.window_manager.flamenco_status = 'PACKING'
