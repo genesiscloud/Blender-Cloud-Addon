@@ -20,8 +20,10 @@
 
 The preferences are managed blender.py, the rest of the Flamenco-specific stuff is here.
 """
+
 import functools
 import logging
+import os
 from pathlib import Path, PurePath
 import typing
 
@@ -150,6 +152,14 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
     log = logging.getLogger('%s.FLAMENCO_OT_render' % __name__)
 
     async def async_execute(self, context):
+        # Refuse to start if the file hasn't been saved. It's okay if
+        # it's dirty, but we do need a filename and a location.
+        if not os.path.exists(context.blend_data.filepath):
+            self.report({'ERROR'}, 'Please save your Blend file before using '
+                                   'the Blender Cloud addon.')
+            self.quit()
+            return
+
         if not await self.authenticate(context):
             return
 
