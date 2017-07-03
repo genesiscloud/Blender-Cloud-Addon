@@ -50,6 +50,7 @@ async def bam_copy(base_blendfile: Path, target_blendfile: Path,
     """
 
     import asyncio
+    import os
     import shlex
     import subprocess
 
@@ -76,9 +77,17 @@ async def bam_copy(base_blendfile: Path, target_blendfile: Path,
     else:
         pythonpath = wheel_pythonpath_278()
 
+    env = {
+        'PYTHONPATH': pythonpath,
+        # Needed on Windows because http://bugs.python.org/issue8557
+        'PATH': os.environ['PATH'],
+    }
+    if 'SYSTEMROOT' in os.environ:  # Windows http://bugs.python.org/issue20614
+        env['SYSTEMROOT'] = os.environ['SYSTEMROOT']
+
     proc = await asyncio.create_subprocess_exec(
         *args,
-        env={'PYTHONPATH': pythonpath},
+        env=env,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
