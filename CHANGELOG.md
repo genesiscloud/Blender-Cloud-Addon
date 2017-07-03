@@ -2,6 +2,7 @@
 
 ## Version 1.7.3 (in development)
 
+- Default to scene frame range when no frame range is given.
 - Refuse to render on Flamenco before blend file is saved at least once.
 - Fixed some Windows-specific issues.
 

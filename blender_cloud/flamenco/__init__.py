@@ -202,10 +202,12 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         # Create the job at Flamenco Server.
         context.window_manager.flamenco_status = 'COMMUNICATING'
+
+        frame_range = scene.flamenco_render_frame_range.strip() or scene_frame_range(context)
         settings = {'blender_cmd': '{blender}',
                     'chunk_size': scene.flamenco_render_fchunk_size,
                     'filepath': manager.replace_path(outfile),
-                    'frames': scene.flamenco_render_frame_range,
+                    'frames': frame_range,
                     'render_output': manager.replace_path(render_output),
                     }
 
@@ -358,6 +360,13 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         return outfile, missing_sources
 
 
+def scene_frame_range(context) -> str:
+    """Returns the frame range string for the current scene."""
+
+    s = context.scene
+    return '%i-%i' % (s.frame_start, s.frame_end)
+
+
 class FLAMENCO_OT_scene_to_frame_range(FlamencoPollMixin, Operator):
     """Sets the scene frame range as the Flamenco render frame range."""
     bl_idname = 'flamenco.scene_to_frame_range'
@@ -365,8 +374,7 @@ class FLAMENCO_OT_scene_to_frame_range(FlamencoPollMixin, Operator):
     bl_description = __doc__.rstrip('.')
 
     def execute(self, context):
-        s = context.scene
-        s.flamenco_render_frame_range = '%i-%i' % (s.frame_start, s.frame_end)
+        context.scene.flamenco_render_frame_range = scene_frame_range(context)
         return {'FINISHED'}
 
 
