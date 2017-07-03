@@ -11,7 +11,7 @@ class Manager(List, Find):
 
     @functools.lru_cache()
     def _sorted_path_replacements(self) -> list:
-        import sys
+        import platform
 
         if self.path_replacement is None:
             return []
@@ -23,9 +23,10 @@ class Manager(List, Find):
         def by_length(item):
             return -len(item[0]), item[0]
 
-        platform = sys.platform
-        return [(varname, platform_replacements[platform])
-                for varname, platform_replacements in sorted(items, key=by_length)]
+        this_platform = platform.system().lower()
+        return [(varname, platform_replacements[this_platform])
+                for varname, platform_replacements in sorted(items, key=by_length)
+                if this_platform in platform_replacements]
 
     def replace_path(self, some_path: pathlib.PurePath) -> str:
         """Performs path variable replacement.
