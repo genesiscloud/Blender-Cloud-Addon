@@ -1,5 +1,10 @@
 # Blender Cloud changelog
 
+## Version 1.7.3 (in development)
+
+- Refuse to render on Flamenco before blend file is saved at least once.
+- Fixed some Windows-specific issues.
+
 
 ## Version 1.7.2 (2017-06-22)
 
