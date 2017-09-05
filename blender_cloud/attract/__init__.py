@@ -173,7 +173,7 @@ class AttractPollMixin:
         return attract_is_active
 
 
-class ToolsPanel(AttractPollMixin, Panel):
+class AttractToolsPanel(AttractPollMixin, Panel):
     bl_label = 'Attract'
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
@@ -974,7 +974,7 @@ def register():
 
     bpy.types.SEQUENCER_PT_edit.append(draw_strip_movie_meta)
 
-    bpy.utils.register_class(ToolsPanel)
+    bpy.utils.register_class(AttractToolsPanel)
     bpy.utils.register_class(AttractShotRelink)
     bpy.utils.register_class(AttractShotDelete)
     bpy.utils.register_class(AttractStripUnlink)
