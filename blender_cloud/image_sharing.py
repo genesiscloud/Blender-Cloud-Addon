@@ -112,7 +112,11 @@ class PILLAR_OT_image_share(pillar.PillarOperatorMixin,
     async def async_execute(self, context):
         """Entry point of the asynchronous operator."""
 
-        self.report({'INFO'}, 'Communicating with Blender Cloud')
+        # We don't want to influence what is included in the screen shot.
+        if self.target == 'SCREENSHOT':
+            print('Blender Cloud add-on is communicating with Blender Cloud')
+        else:
+            self.report({'INFO'}, 'Communicating with Blender Cloud')
 
         try:
             # Refresh credentials
