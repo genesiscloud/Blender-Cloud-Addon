@@ -2,7 +2,8 @@
 
 ## Version 1.7.4 (in development)
 
-- Fixed class name collision upon add-on registration. This is checked since Blender 2.79.
+- Fix [T52621](https://developer.blender.org/T52621): Fixed class name collision upon add-on
+  registration. This is checked since Blender 2.79.
 - Fix [T48852](https://developer.blender.org/T48852): Screenshot no longer shows "Communicating with
   Blender Cloud".
 
