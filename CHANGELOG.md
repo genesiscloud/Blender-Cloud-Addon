@@ -1,6 +1,6 @@
 # Blender Cloud changelog
 
-## Version 1.7.3 (in development)
+## Version 1.7.3 (2017-08-08)
 
 - Default to scene frame range when no frame range is given.
 - Refuse to render on Flamenco before blend file is saved at least once.
