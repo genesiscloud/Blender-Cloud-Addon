@@ -83,8 +83,13 @@ class PathReplacementTest(unittest.TestCase):
 
     def _do_test(self, test_paths, platform, pathclass):
         self.test_manager.PurePlatformPath = pathclass
-        with unittest.mock.patch('sys.platform', platform):
+
+        def mocked_system():
+            return platform
+
+        with unittest.mock.patch('platform.system', mocked_system):
             for expected_result, input_path in test_paths:
+                as_path_instance = pathclass(input_path)
                 self.assertEqual(expected_result,
-                                 self.test_manager.replace_path(pathclass(input_path)),
-                                 'for input %s on platform %s' % (input_path, platform))
+                                 self.test_manager.replace_path(as_path_instance),
+                                 'for input %r on platform %s' % (as_path_instance, platform))
