@@ -1,6 +1,6 @@
 # Blender Cloud changelog
 
-## Version 1.7.4 (in development)
+## Version 1.7.4 (2017-09-05)
 
 - Fix [T52621](https://developer.blender.org/T52621): Fixed class name collision upon add-on
   registration. This is checked since Blender 2.79.
