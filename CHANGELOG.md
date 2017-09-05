@@ -1,5 +1,10 @@
 # Blender Cloud changelog
 
+## Version 1.7.4 (in development)
+
+- Fixed class name collision upon add-on registration. This is checked since Blender 2.79.
+
+
 ## Version 1.7.3 (2017-08-08)
 
 - Default to scene frame range when no frame range is given.
