@@ -571,7 +571,7 @@ class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
             pillarsdk.Project.all,
             {'where': {'user': self.user_id,
                        'category': {'$ne': 'home'}},
-             'sort': '-_created',
+             'sort': '-name',
              'projection': {'_id': True,
                             'name': True,
                             'extension_props': True},
@@ -581,7 +581,7 @@ class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
             pillarsdk.Project.all,
             {'where': {'user': {'$ne': self.user_id},
                        'permissions.groups.group': {'$in': self.db_user.groups}},
-             'sort': '-_created',
+             'sort': '-name',
              'projection': {'_id': True,
                             'name': True,
                             'extension_props': True},
@@ -605,7 +605,10 @@ class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
         projects = list(reduce_properties(projects_user['_items'])) + \
                    list(reduce_properties(projects_shared['_items']))
 
-        preferences().project.available_projects = projects
+        def proj_sort_key(project):
+            return project.get('name')
+
+        preferences().project.available_projects = sorted(projects, key=proj_sort_key)
 
         self.quit()
 

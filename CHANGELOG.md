@@ -1,5 +1,10 @@
 # Blender Cloud changelog
 
+## Version 1.7.5 (2017-10-06)
+
+- Sorting the project list alphabetically.
+
+
 ## Version 1.7.4 (2017-09-05)
 
 - Fix [T52621](https://developer.blender.org/T52621): Fixed class name collision upon add-on
