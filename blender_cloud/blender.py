@@ -236,7 +236,7 @@ class BlenderCloudPreferences(AddonPreferences):
     # NOTE: The assumption is that the workers can also find the files in the same path.
     #       This assumption is true for the Blender Institute.
     flamenco_job_file_path = StringProperty(
-        name='Job File Path',
+        name='Job Storage Path',
         description='Path where to store job files, should be accesible for Workers too',
         subtype='DIR_PATH',
         default='/render/_flamenco/storage')

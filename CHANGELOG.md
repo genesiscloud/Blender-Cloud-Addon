@@ -3,6 +3,7 @@
 ## Version 1.7.5 (2017-10-06)
 
 - Sorting the project list alphabetically.
+- Renamed 'Job File Path' to 'Job Storage Path' so it's more explicit.
 
 
 ## Version 1.7.4 (2017-09-05)
