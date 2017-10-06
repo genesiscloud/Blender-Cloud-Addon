@@ -27,7 +27,6 @@ import os
 from pathlib import Path, PurePath
 import typing
 
-
 if "bpy" in locals():
     import importlib
 
@@ -39,14 +38,12 @@ if "bpy" in locals():
 else:
     from . import bam_interface, sdk
 
-
 import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
 from bpy.props import StringProperty, EnumProperty, PointerProperty, BoolProperty, IntProperty
 
 from .. import async_loop, pillar
 from ..utils import pyside_cache, redraw
-
 
 log = logging.getLogger(__name__)
 
