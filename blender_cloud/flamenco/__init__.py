@@ -452,6 +452,30 @@ class FLAMENCO_OT_explore_file_path(FlamencoPollMixin,
         return {'FINISHED'}
 
 
+class FLAMENCO_OT_enable_output_path_override(Operator):
+    """Enables the 'override output path' setting."""
+
+    bl_idname = 'flamenco.enable_output_path_override'
+    bl_label = 'Enable Overriding of Output Path'
+    bl_description = 'Click to specify a non-default Output Path for this particular job'
+
+    def execute(self, context):
+        context.scene.flamenco_do_override_output_path = True
+        return {'FINISHED'}
+
+
+class FLAMENCO_OT_disable_output_path_override(Operator):
+    """Disables the 'override output path' setting."""
+
+    bl_idname = 'flamenco.disable_output_path_override'
+    bl_label = 'disable Overriding of Output Path'
+    bl_description = 'Click to use the default Output Path'
+
+    def execute(self, context):
+        context.scene.flamenco_do_override_output_path = False
+        return {'FINISHED'}
+
+
 async def create_job(user_id: str,
                      project_id: str,
                      manager_id: str,
@@ -506,6 +530,7 @@ def _render_output_path(
         flamenco_job_output_path: str,
         render_image_format: str,
         flamenco_render_frame_range: str,
+        include_rel_path: bool = True,
 ) -> typing.Optional[PurePath]:
     """Cached version of render_output_path()
 
@@ -530,8 +555,7 @@ def _render_output_path(
     except ValueError:
         return None
 
-    rel_parts = proj_rel.parts[flamenco_job_output_strip_components:]
-    output_top = Path(flamenco_job_output_path)
+    output_top = PurePath(flamenco_job_output_path)
 
     # Strip off '.flamenco' too; we use 'xxx.flamenco.blend' as job file, but
     # don't want to have all the output paths ending in '.flamenco'.
@@ -539,7 +563,11 @@ def _render_output_path(
     if stem.endswith('.flamenco'):
         stem = stem[:-9]
 
-    dir_components = output_top.joinpath(*rel_parts) / stem
+    if include_rel_path:
+        rel_parts = proj_rel.parts[flamenco_job_output_strip_components:]
+        dir_components = output_top.joinpath(*rel_parts) / stem
+    else:
+        dir_components = output_top
 
     # Blender will have to append the file extensions by itself.
     if is_image_type(render_image_format):
@@ -564,13 +592,19 @@ def render_output_path(context, filepath: Path = None) -> typing.Optional[PurePa
     if filepath is None:
         filepath = Path(context.blend_data.filepath)
 
+    if scene.flamenco_do_override_output_path:
+        job_output_path = scene.flamenco_override_output_path
+    else:
+        job_output_path = prefs.flamenco_job_output_path
+
     return _render_output_path(
         prefs.cloud_project_local_path,
         filepath,
         prefs.flamenco_job_output_strip_components,
-        prefs.flamenco_job_output_path,
+        job_output_path,
         scene.render.image_settings.file_format,
         scene.flamenco_render_frame_range,
+        include_rel_path=not scene.flamenco_do_override_output_path,
     )
 
 
@@ -604,8 +638,9 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         if getattr(context.scene, 'flamenco_render_job_type', None) == 'blender-render-progressive':
             layout.prop(context.scene, 'flamenco_render_schunk_count')
 
-        readonly_stuff = layout.column(align=True)
-        labeled_row = readonly_stuff.split(0.25, align=True)
+        paths_layout = layout.column(align=True)
+
+        labeled_row = paths_layout.split(0.25, align=True)
         labeled_row.label('Storage:')
         prop_btn_row = labeled_row.row(align=True)
         prop_btn_row.label(prefs.flamenco_job_file_path)
@@ -613,18 +648,32 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
                                       text='', icon='DISK_DRIVE')
         props.path = prefs.flamenco_job_file_path
 
-        labeled_row = readonly_stuff.split(0.25, align=True)
-        labeled_row.label('Output:')
-        prop_btn_row = labeled_row.row(align=True)
         render_output = render_output_path(context)
-
         if render_output is None:
-            prop_btn_row.label('Unable to render with Flamenco, outside of project directory.')
+            paths_layout.label('Unable to render with Flamenco, outside of project directory.')
         else:
-            prop_btn_row.label(str(render_output))
+            labeled_row = paths_layout.split(0.25, align=True)
+            labeled_row.label('Output:')
+            prop_btn_row = labeled_row.row(align=True)
+
+            if context.scene.flamenco_do_override_output_path:
+                prop_btn_row.prop(context.scene, 'flamenco_override_output_path', text='')
+                op = FLAMENCO_OT_disable_output_path_override.bl_idname
+                icon = 'X'
+            else:
+                prop_btn_row.label(str(render_output))
+                op = FLAMENCO_OT_enable_output_path_override.bl_idname
+                icon = 'GREASEPENCIL'
+            prop_btn_row.operator(op, icon=icon, text='')
+
             props = prop_btn_row.operator(FLAMENCO_OT_explore_file_path.bl_idname,
                                           text='', icon='DISK_DRIVE')
             props.path = str(render_output.parent)
+
+            if context.scene.flamenco_do_override_output_path:
+                labeled_row = paths_layout.split(0.25, align=True)
+                labeled_row.label('Effective Output Path:')
+                labeled_row.label(str(render_output))
 
             flamenco_status = context.window_manager.flamenco_status
             if flamenco_status == 'IDLE':
@@ -657,6 +706,22 @@ def deactivate():
     _render_output_path.cache_clear()
 
 
+def flamenco_do_override_output_path_updated(scene, context):
+    """Set the override paths to the default, if not yet set."""
+
+    # Only set a default when enabling the override.
+    if not scene.flamenco_do_override_output_path:
+        return
+
+    # Don't overwrite existing setting.
+    if scene.flamenco_override_output_path:
+        return
+
+    from ..blender import preferences
+    scene.flamenco_override_output_path = preferences().flamenco_job_output_path
+    log.info('Setting Override Output Path to %s', scene.flamenco_override_output_path)
+
+
 def register():
     from ..utils import redraw
 
@@ -666,6 +731,8 @@ def register():
     bpy.utils.register_class(FLAMENCO_OT_scene_to_frame_range)
     bpy.utils.register_class(FLAMENCO_OT_copy_files)
     bpy.utils.register_class(FLAMENCO_OT_explore_file_path)
+    bpy.utils.register_class(FLAMENCO_OT_enable_output_path_override)
+    bpy.utils.register_class(FLAMENCO_OT_disable_output_path_override)
     bpy.utils.register_class(FLAMENCO_PT_render)
 
     scene = bpy.types.Scene
@@ -703,6 +770,19 @@ def register():
         description='Higher numbers mean higher priority'
     )
 
+    scene.flamenco_do_override_output_path = BoolProperty(
+        name='Override Output Path for this Job',
+        description='When enabled, allows you to specify a non-default Output path '
+                    'for this particular job',
+        default=False,
+        update=flamenco_do_override_output_path_updated
+    )
+    scene.flamenco_override_output_path = StringProperty(
+        name='Override Output Path',
+        description='Path where to store output files, should be accessible for Workers',
+        subtype='DIR_PATH',
+        default='')
+
     bpy.types.WindowManager.flamenco_status = EnumProperty(
         items=[
             ('IDLE', 'IDLE', 'Not doing anything.'),
@@ -737,6 +817,14 @@ def unregister():
         pass
     try:
         del bpy.types.Scene.flamenco_render_job_priority
+    except AttributeError:
+        pass
+    try:
+        del bpy.types.Scene.flamenco_do_override_output_path
+    except AttributeError:
+        pass
+    try:
+        del bpy.types.Scene.flamenco_override_output_path
     except AttributeError:
         pass
     try:

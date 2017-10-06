@@ -4,6 +4,7 @@
 
 - Sorting the project list alphabetically.
 - Renamed 'Job File Path' to 'Job Storage Path' so it's more explicit.
+- Allow overriding the render output path on a per-scene basis.
 
 
 ## Version 1.7.4 (2017-09-05)
