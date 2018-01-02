@@ -552,6 +552,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
 
     def browse_assets(self):
         self.log.debug('Browsing assets at %r', self.current_path)
+        bpy.context.window_manager.last_blender_cloud_location = str(self.current_path)
         self._new_async_task(self.async_download_previews())
 
     def draw_menu(self, context):
