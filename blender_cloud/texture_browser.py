@@ -76,8 +76,9 @@ class MenuItem:
     icon_margin_y = 4
     text_margin_x = 6
 
-    text_height = 16
-    text_width = 72
+    text_size = 16
+    text_size_small = 13
+    text_dpi = 72
 
     DEFAULT_ICONS = {
         'FOLDER': os.path.join(library_icons_path, 'folder.png'),
@@ -214,11 +215,30 @@ class MenuItem:
 
         # draw some text
         font_id = 0
-        blf.position(font_id,
-                     self.x + self.icon_margin_x + ICON_WIDTH + self.text_margin_x,
-                     self.y + ICON_HEIGHT * 0.5 - 0.25 * self.text_height, 0)
-        blf.size(font_id, self.text_height, self.text_width)
+        text_x = self.x + self.icon_margin_x + ICON_WIDTH + self.text_margin_x
+        text_y = self.y + ICON_HEIGHT * 0.5 - 0.25 * self.text_size
+        blf.position(font_id, text_x, text_y, 0)
+        blf.size(font_id, self.text_size, self.text_dpi)
         blf.draw(font_id, self.label_text)
+
+        # Draw the components of the texture (i.e. which map types are available)
+        try:
+            node_files = self.node.properties.files
+        except AttributeError:
+            # Happens for nodes that don't have .properties.files.
+            node_files = None
+        if not node_files:
+            return
+
+        map_types = {f['map_type'] for f in node_files}
+        map_types.discard('color')  # all textures have colour
+        if not map_types:
+            return
+
+        bgl.glColor4f(1.0, 1.0, 1.0, 0.5)
+        blf.size(font_id, self.text_size_small, self.text_dpi)
+        blf.position(font_id, text_x, self.y + 0.5 * self.text_size_small, 0)
+        blf.draw(font_id, ', '.join(sorted(map_types)))
 
     def hits(self, mouse_x: int, mouse_y: int) -> bool:
         return self.x < mouse_x < self.x + self.width and self.y < mouse_y < self.y + self.height

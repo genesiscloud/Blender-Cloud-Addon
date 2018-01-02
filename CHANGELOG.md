@@ -5,6 +5,8 @@
 - Distinguish between 'please subscribe' (to get a new subscription) and 'please renew' (to renew an
   existing subscription).
 - When re-opening the Texture Browser it now opens in the same folder as where it was when closed.
+- In the texture browser, draw the components of the texture (i.e. which map types are available),
+  such as 'bump, normal, specular'.
 
 
 ## Version 1.7.5 (2017-10-06)
