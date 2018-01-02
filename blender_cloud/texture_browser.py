@@ -230,7 +230,7 @@ class MenuItem:
         if not node_files:
             return
 
-        map_types = {f['map_type'] for f in node_files}
+        map_types = {f.map_type for f in node_files if f.map_type}
         map_types.discard('color')  # all textures have colour
         if not map_types:
             return
