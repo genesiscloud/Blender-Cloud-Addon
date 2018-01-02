@@ -8,6 +8,10 @@
 - In the texture browser, draw the components of the texture (i.e. which map types are available),
   such as 'bump, normal, specular'.
 - Use Interface Scale setting from user preferences to draw the Texture Browser text.
+- Store project-specific settings in the preferences, such as filesystem paths, for each project,
+  and restore those settings when the project is selected again. Does not touch settings that
+  haven't been set for the newly selected project.
+- Added button in the User Preferences to open a Cloud project in your webbrowser.
 
 
 ## Version 1.7.5 (2017-10-06)
