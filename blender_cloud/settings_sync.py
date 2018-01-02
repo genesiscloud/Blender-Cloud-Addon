@@ -284,9 +284,8 @@ class PILLAR_OT_sync(pillar.PillarOperatorMixin,
                 db_user = await self.check_credentials(context, REQUIRES_ROLES_FOR_SYNC)
                 self.user_id = db_user['_id']
                 log.debug('Found user ID: %s', self.user_id)
-            except pillar.NotSubscribedToCloudError:
-                self.log.exception('User not subscribed to cloud.')
-                self.bss_report({'SUBSCRIBE'}, 'Please subscribe to the Blender Cloud.')
+            except pillar.NotSubscribedToCloudError as ex:
+                self._log_subscription_needed(can_renew=ex.can_renew)
                 self._state = 'QUIT'
                 return
             except pillar.UserNotLoggedInError:

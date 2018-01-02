@@ -311,8 +311,8 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
             self.mouse_y = event.mouse_y
 
         left_mouse_release = event.type == 'LEFTMOUSE' and event.value == 'RELEASE'
-        if self._state == 'PLEASE_SUBSCRIBE' and left_mouse_release:
-            self.open_browser_subscribe()
+        if left_mouse_release and self._state in {'PLEASE_SUBSCRIBE', 'PLEASE_RENEW'}:
+            self.open_browser_subscribe(renew=self._state == 'PLEASE_RENEW')
             self._finish(context)
             return {'FINISHED'}
 
@@ -365,9 +365,9 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
 
         try:
             db_user = await self.check_credentials(context, REQUIRED_ROLES_FOR_TEXTURE_BROWSER)
-        except pillar.NotSubscribedToCloudError:
-            self.log.info('User not subscribed to Blender Cloud.')
-            self._show_subscribe_screen()
+        except pillar.NotSubscribedToCloudError as ex:
+            self._log_subscription_needed(can_renew=ex.can_renew, level='INFO')
+            self._show_subscribe_screen(can_renew=ex.can_renew)
             return None
 
         if db_user is None:
@@ -375,10 +375,14 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
 
         await self.async_download_previews()
 
-    def _show_subscribe_screen(self):
+    def _show_subscribe_screen(self, *, can_renew: bool):
         """Shows the "You need to subscribe" screen."""
 
-        self._state = 'PLEASE_SUBSCRIBE'
+        if can_renew:
+            self._state = 'PLEASE_RENEW'
+        else:
+            self._state = 'PLEASE_SUBSCRIBE'
+
         bpy.context.window.cursor_set('HAND')
 
     def descend_node(self, menu_item: MenuItem):
@@ -560,6 +564,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
             'DOWNLOADING_TEXTURE': self._draw_downloading,
             'EXCEPTION': self._draw_exception,
             'PLEASE_SUBSCRIBE': self._draw_subscribe,
+            'PLEASE_RENEW': self._draw_renew,
         }
 
         if self._state in drawers:
@@ -727,6 +732,11 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
                                   'Click to subscribe to the Blender Cloud',
                                   (0.0, 0.0, 0.2, 0.6))
 
+    def _draw_renew(self, context):
+        self._draw_text_on_colour(context,
+                                  'Click to renew your Blender Cloud subscription',
+                                  (0.0, 0.0, 0.2, 0.6))
+
     def get_clicked(self) -> MenuItem:
 
         for item in self.current_display_content:
@@ -807,11 +817,11 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
                                                      future=signalling_future))
         self.async_task.add_done_callback(texture_download_completed)
 
-    def open_browser_subscribe(self):
+    def open_browser_subscribe(self, *, renew: bool):
         import webbrowser
 
-        webbrowser.open_new_tab('https://cloud.blender.org/join')
-
+        url = 'renew' if renew else 'join'
+        webbrowser.open_new_tab('https://cloud.blender.org/%s' % url)
         self.report({'INFO'}, 'We just started a browser for you.')
 
     def _scroll_smooth(self):
@@ -866,9 +876,8 @@ class PILLAR_OT_switch_hdri(pillar.PillarOperatorMixin,
             try:
                 db_user = await self.check_credentials(context, REQUIRED_ROLES_FOR_TEXTURE_BROWSER)
                 user_id = db_user['_id']
-            except pillar.NotSubscribedToCloudError:
-                self.log.exception('User not subscribed to cloud.')
-                self.report({'ERROR'}, 'Please subscribe to the Blender Cloud.')
+            except pillar.NotSubscribedToCloudError as ex:
+                self._log_subscription_needed(can_renew=ex.can_renew)
                 self._state = 'QUIT'
                 return
             except pillar.UserNotLoggedInError:

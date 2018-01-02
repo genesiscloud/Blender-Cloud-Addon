@@ -79,6 +79,7 @@ def register():
         reload_mod('blendfile')
         reload_mod('home_project')
         reload_mod('utils')
+        reload_mod('pillar')
 
         async_loop = reload_mod('async_loop')
         flamenco = reload_mod('flamenco')

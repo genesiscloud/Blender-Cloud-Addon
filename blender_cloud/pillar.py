@@ -62,7 +62,16 @@ class CredentialsNotSyncedError(UserNotLoggedInError):
 
 
 class NotSubscribedToCloudError(UserNotLoggedInError):
-    """Raised when the user may be logged in on Blender ID, but has no Blender Cloud token."""
+    """Raised when the user does not have an active Cloud subscription.
+
+    :ivar can_renew: True when the user has an inactive subscription that can be renewed,
+        or False when the user has no subscription at all.
+    """
+
+    def __init__(self, can_renew: bool):
+        super().__init__()
+        self.can_renew = can_renew
+        log.warning('Not subscribed to cloud, can_renew=%s', can_renew)
 
 
 class PillarError(RuntimeError):
@@ -273,14 +282,15 @@ async def check_pillar_credentials(required_roles: set):
     except (pillarsdk.UnauthorizedAccess, pillarsdk.ResourceNotFound, pillarsdk.ForbiddenAccess):
         raise CredentialsNotSyncedError()
 
-    roles = db_user.roles or set()
-    log.debug('User has roles %r', roles)
-    if required_roles and not required_roles.intersection(set(roles)):
+    roles = set(db_user.roles or set())
+    log.getChild('check_pillar_credentials').debug('user has roles %r', roles)
+    if required_roles and not required_roles.intersection(roles):
         # Delete the subclient info. This forces a re-check later, which can
         # then pick up on the user's new status.
         del profile.subclients[SUBCLIENT_ID]
         profile.save_json()
-        raise NotSubscribedToCloudError()
+
+        raise NotSubscribedToCloudError(can_renew='has_subscription' in roles)
 
     return db_user
 
@@ -834,7 +844,6 @@ class PillarOperatorMixin:
         try:
             db_user = await check_pillar_credentials(required_roles)
         except NotSubscribedToCloudError:
-            self._log_subscription_needed()
             raise
         except CredentialsNotSyncedError:
             self.log.info('Credentials not synced, re-syncing automatically.')
@@ -845,7 +854,6 @@ class PillarOperatorMixin:
         try:
             db_user = await refresh_pillar_credentials(required_roles)
         except NotSubscribedToCloudError:
-            self._log_subscription_needed()
             raise
         except CredentialsNotSyncedError:
             self.log.info('Credentials not synced after refreshing, handling as not logged in.')
@@ -857,11 +865,13 @@ class PillarOperatorMixin:
             self.log.info('Credentials refreshed and ok.')
             return db_user
 
-    def _log_subscription_needed(self):
-        self.log.warning(
-            'Please subscribe to the blender cloud at https://cloud.blender.org/join')
-        self.report({'INFO'},
-                    'Please subscribe to the blender cloud at https://cloud.blender.org/join')
+    def _log_subscription_needed(self, *, can_renew: bool, level='ERROR'):
+        if can_renew:
+            msg = 'Please renew your Blender Cloud subscription at https://cloud.blender.org/renew'
+        else:
+            msg = 'Please subscribe to the blender cloud at https://cloud.blender.org/join'
+        self.log.warning(msg)
+        self.report({level}, msg)
 
 
 class AuthenticatedPillarOperatorMixin(PillarOperatorMixin):

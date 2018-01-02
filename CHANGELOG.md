@@ -1,5 +1,11 @@
 # Blender Cloud changelog
 
+## Version 1.8 (in development)
+
+- Distinguish between 'please subscribe' (to get a new subscription) and 'please renew' (to renew an
+  existing subscription).
+
+
 ## Version 1.7.5 (2017-10-06)
 
 - Sorting the project list alphabetically.
