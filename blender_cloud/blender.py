@@ -23,6 +23,7 @@ Separated from __init__.py so that we can import & run from non-Blender environm
 import functools
 import logging
 import os.path
+import tempfile
 
 import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
@@ -232,21 +233,16 @@ class BlenderCloudPreferences(AddonPreferences):
         description='Filter like "*.abc;*.mkv" to prevent certain files to be packed '
                     'into the output directory',
         default='')
-    # TODO: before making Flamenco public, change the defaults to something less Institute-specific.
-    # NOTE: The assumption is that the workers can also find the files in the same path.
-    #       This assumption is true for the Blender Institute.
     flamenco_job_file_path = StringProperty(
         name='Job Storage Path',
         description='Path where to store job files, should be accesible for Workers too',
         subtype='DIR_PATH',
-        default='/render/_flamenco/storage')
-
-    # TODO: before making Flamenco public, change the defaults to something less Institute-specific.
+        default=tempfile.gettempdir())
     flamenco_job_output_path = StringProperty(
         name='Job Output Path',
         description='Path where to store output files, should be accessible for Workers',
         subtype='DIR_PATH',
-        default='/render/_flamenco/output')
+        default=tempfile.gettempdir())
     flamenco_job_output_strip_components = IntProperty(
         name='Job Output Path Strip Components',
         description='The final output path comprises of the job output path, and the blend file '
