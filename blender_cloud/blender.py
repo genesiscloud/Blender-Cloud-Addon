@@ -386,6 +386,10 @@ class BlenderCloudPreferences(AddonPreferences):
                 row_buttons.operator('pillar.projects',
                                      text='',
                                      icon='FILE_REFRESH')
+                props = row_buttons.operator('pillar.project_open_in_browser',
+                                             text='',
+                                             icon='WORLD')
+                props.project_id = project
         else:
             row_buttons.label('Fetching available projects.')
 
@@ -525,6 +529,36 @@ class PILLAR_OT_subscribe(Operator):
         return {'FINISHED'}
 
 
+class PILLAR_OT_project_open_in_browser(Operator):
+    bl_idname = 'pillar.project_open_in_browser'
+    bl_label = 'Open in Browser'
+    bl_description = 'Opens a webbrowser to show the project'
+
+    project_id = StringProperty(name='Project ID')
+
+    def execute(self, context):
+        if not self.project_id:
+            return {'CANCELLED'}
+
+        import webbrowser
+        import urllib.parse
+
+        import pillarsdk
+        from .pillar import sync_call
+
+        project = sync_call(pillarsdk.Project.find, self.project_id, {'projection': {'url': True}})
+
+        if log.isEnabledFor(logging.DEBUG):
+            import pprint
+            log.debug('found project: %s', pprint.pformat(project.to_dict()))
+
+        url = urllib.parse.urljoin(PILLAR_WEB_SERVER_URL, 'p/' + project.url)
+        webbrowser.open_new_tab(url)
+        self.report({'INFO'}, 'Opened a browser at %s' % url)
+
+        return {'FINISHED'}
+
+
 class PILLAR_OT_projects(async_loop.AsyncModalOperatorMixin,
                          pillar.AuthenticatedPillarOperatorMixin,
                          Operator):
@@ -652,6 +686,7 @@ def register():
     bpy.utils.register_class(SyncStatusProperties)
     bpy.utils.register_class(PILLAR_OT_subscribe)
     bpy.utils.register_class(PILLAR_OT_projects)
+    bpy.utils.register_class(PILLAR_OT_project_open_in_browser)
     bpy.utils.register_class(PILLAR_PT_image_custom_properties)
 
     addon_prefs = preferences()
@@ -686,6 +721,7 @@ def unregister():
     bpy.utils.unregister_class(SyncStatusProperties)
     bpy.utils.unregister_class(PILLAR_OT_subscribe)
     bpy.utils.unregister_class(PILLAR_OT_projects)
+    bpy.utils.unregister_class(PILLAR_OT_project_open_in_browser)
     bpy.utils.unregister_class(PILLAR_PT_image_custom_properties)
 
     del WindowManager.last_blender_cloud_location
