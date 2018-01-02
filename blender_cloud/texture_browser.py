@@ -76,9 +76,8 @@ class MenuItem:
     icon_margin_y = 4
     text_margin_x = 6
 
-    text_size = 16
-    text_size_small = 13
-    text_dpi = 72
+    text_size = 12
+    text_size_small = 10
 
     DEFAULT_ICONS = {
         'FOLDER': os.path.join(library_icons_path, 'folder.png'),
@@ -215,10 +214,11 @@ class MenuItem:
 
         # draw some text
         font_id = 0
+        text_dpi = bpy.context.user_preferences.system.dpi
         text_x = self.x + self.icon_margin_x + ICON_WIDTH + self.text_margin_x
         text_y = self.y + ICON_HEIGHT * 0.5 - 0.25 * self.text_size
         blf.position(font_id, text_x, text_y, 0)
-        blf.size(font_id, self.text_size, self.text_dpi)
+        blf.size(font_id, self.text_size, text_dpi)
         blf.draw(font_id, self.label_text)
 
         # Draw the components of the texture (i.e. which map types are available)
@@ -236,7 +236,7 @@ class MenuItem:
             return
 
         bgl.glColor4f(1.0, 1.0, 1.0, 0.5)
-        blf.size(font_id, self.text_size_small, self.text_dpi)
+        blf.size(font_id, self.text_size_small, text_dpi)
         blf.position(font_id, text_x, self.y + 0.5 * self.text_size_small, 0)
         blf.draw(font_id, ', '.join(sorted(map_types)))
 
