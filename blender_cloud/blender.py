@@ -30,7 +30,7 @@ from bpy.types import AddonPreferences, Operator, WindowManager, Scene, Property
 from bpy.props import StringProperty, EnumProperty, PointerProperty, BoolProperty, IntProperty
 import rna_prop_ui
 
-from . import pillar, async_loop, flamenco
+from . import pillar, async_loop, flamenco, project_specific
 from .utils import pyside_cache, redraw
 
 PILLAR_WEB_SERVER_URL = os.environ.get('BCLOUD_SERVER', 'https://cloud.blender.org/')
@@ -38,7 +38,6 @@ PILLAR_SERVER_URL = '%sapi/' % PILLAR_WEB_SERVER_URL
 
 ADDON_NAME = 'blender_cloud'
 log = logging.getLogger(__name__)
-
 icons = None
 
 
@@ -140,30 +139,6 @@ def project_extensions(project_id) -> set:
     return set(proj.get('enabled_for', ()))
 
 
-def handle_project_update(_=None, _2=None):
-    """Handles changing projects, which may cause extensions to be disabled/enabled.
-
-    Ignores arguments so that it can be used as property update callback.
-    """
-
-    project_id = preferences().project.project
-    log.info('Updating internal state to reflect extensions enabled on current project %s.',
-             project_id)
-
-    project_extensions.cache_clear()
-
-    from blender_cloud import attract, flamenco
-    attract.deactivate()
-    flamenco.deactivate()
-
-    enabled_for = project_extensions(project_id)
-    log.info('Project extensions: %s', enabled_for)
-    if 'attract' in enabled_for:
-        attract.activate()
-    if 'flamenco' in enabled_for:
-        flamenco.activate()
-
-
 class BlenderCloudProjectGroup(PropertyGroup):
     status = EnumProperty(
         items=[
@@ -178,7 +153,7 @@ class BlenderCloudProjectGroup(PropertyGroup):
         items=bcloud_available_projects,
         name='Cloud project',
         description='Which Blender Cloud project to work with',
-        update=handle_project_update
+        update=project_specific.handle_project_update
     )
 
     # List of projects is stored in 'available_projects' ID property,
@@ -190,13 +165,13 @@ class BlenderCloudProjectGroup(PropertyGroup):
     @available_projects.setter
     def available_projects(self, new_projects):
         self['available_projects'] = new_projects
-        handle_project_update()
+        project_specific.handle_project_update()
 
 
 class BlenderCloudPreferences(AddonPreferences):
     bl_idname = ADDON_NAME
 
-    # The following two properties are read-only to limit the scope of the
+    # The following property is read-only to limit the scope of the
     # addon and allow for proper testing within this scope.
     pillar_server = StringProperty(
         name='Blender Cloud Server',
@@ -225,24 +200,32 @@ class BlenderCloudPreferences(AddonPreferences):
         description='Local path of your Attract project, used to search for blend files; '
                     'usually best to set to an absolute path',
         subtype='DIR_PATH',
-        default='//../')
+        default='//../',
+        update=project_specific.store,
+    )
 
     flamenco_manager = PointerProperty(type=flamenco.FlamencoManagerGroup)
     flamenco_exclude_filter = StringProperty(
         name='File Exclude Filter',
         description='Filter like "*.abc;*.mkv" to prevent certain files to be packed '
                     'into the output directory',
-        default='')
+        default='',
+        update=project_specific.store,
+    )
     flamenco_job_file_path = StringProperty(
         name='Job Storage Path',
         description='Path where to store job files, should be accesible for Workers too',
         subtype='DIR_PATH',
-        default=tempfile.gettempdir())
+        default=tempfile.gettempdir(),
+        update=project_specific.store,
+    )
     flamenco_job_output_path = StringProperty(
         name='Job Output Path',
         description='Path where to store output files, should be accessible for Workers',
         subtype='DIR_PATH',
-        default=tempfile.gettempdir())
+        default=tempfile.gettempdir(),
+        update=project_specific.store,
+    )
     flamenco_job_output_strip_components = IntProperty(
         name='Job Output Path Strip Components',
         description='The final output path comprises of the job output path, and the blend file '
@@ -251,11 +234,12 @@ class BlenderCloudPreferences(AddonPreferences):
         min=0,
         default=0,
         soft_max=4,
+        update=project_specific.store,
     )
     flamenco_open_browser_after_submit = BoolProperty(
         name='Open Browser after Submitting Job',
         description='When enabled, Blender will open a webbrowser',
-        default=True
+        default=True,
     )
 
     def draw(self, context):

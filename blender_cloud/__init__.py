@@ -88,9 +88,10 @@ def register():
         settings_sync = reload_mod('settings_sync')
         image_sharing = reload_mod('image_sharing')
         blender = reload_mod('blender')
+        project_specific = reload_mod('project_specific')
     else:
         from . import (blender, texture_browser, async_loop, settings_sync, blendfile, home_project,
-                       image_sharing, attract, flamenco)
+                       image_sharing, attract, flamenco, project_specific)
 
     async_loop.setup_asyncio_executor()
     async_loop.register()
@@ -102,7 +103,7 @@ def register():
     image_sharing.register()
     blender.register()
 
-    blender.handle_project_update()
+    project_specific.handle_project_update()
 
 
 def _monkey_patch_requests():

@@ -42,7 +42,7 @@ import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
 from bpy.props import StringProperty, EnumProperty, PointerProperty, BoolProperty, IntProperty
 
-from .. import async_loop, pillar
+from .. import async_loop, pillar, project_specific
 from ..utils import pyside_cache, redraw
 
 log = logging.getLogger(__name__)
@@ -67,7 +67,9 @@ class FlamencoManagerGroup(PropertyGroup):
     manager = EnumProperty(
         items=available_managers,
         name='Flamenco Manager',
-        description='Which Flamenco Manager to use for jobs')
+        description='Which Flamenco Manager to use for jobs',
+        update=project_specific.store,
+    )
 
     status = EnumProperty(
         items=[
