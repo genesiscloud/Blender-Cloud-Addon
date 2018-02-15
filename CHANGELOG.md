@@ -1,6 +1,6 @@
 # Blender Cloud changelog
 
-## Version 1.8 (in development)
+## Version 1.8 (2018-01-03)
 
 - Distinguish between 'please subscribe' (to get a new subscription) and 'please renew' (to renew an
   existing subscription).
