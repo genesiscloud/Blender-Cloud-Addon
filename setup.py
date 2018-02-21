@@ -18,7 +18,6 @@
 # ##### END GPL LICENSE BLOCK #####
 
 import glob
-import os
 import sys
 import shutil
 import subprocess
@@ -35,6 +34,12 @@ from setuptools import setup, find_packages
 
 requirement_re = re.compile('[><=]+')
 sys.dont_write_bytecode = True
+
+# Download wheels from pypi. The specific versions are taken from requirements.txt
+wheels = [
+    'lockfile', 'pillarsdk',
+    'blender-bam',  # for compatibility with Blender 2.78
+]
 
 
 def set_default_path(var, default):
@@ -90,21 +95,11 @@ class BuildWheels(Command):
                 # log.info('   - %s = %s / %s', package, line, line_req[-1])
 
         self.wheels_path.mkdir(parents=True, exist_ok=True)
-
-        # Download lockfile, as there is a suitable wheel on pypi.
-        if not list(self.wheels_path.glob('lockfile*.whl')):
-            log.info('Downloading lockfile wheel')
-            self.download_wheel(requirements['lockfile'])
-
-        # Download Pillar Python SDK from pypi.
-        if not list(self.wheels_path.glob('pillarsdk*.whl')):
-            log.info('Downloading Pillar Python SDK wheel')
-            self.download_wheel(requirements['pillarsdk'])
-
-        # Download BAM from pypi. This is required for compatibility with Blender 2.78.
-        if not list(self.wheels_path.glob('blender_bam*.whl')):
-            log.info('Downloading BAM wheel')
-            self.download_wheel(requirements['blender-bam'])
+        for package in wheels:
+            pattern = package.replace('-', '_') + '*.whl'
+            if list(self.wheels_path.glob(pattern)):
+                continue
+            self.download_wheel(requirements[package])
 
         # Build CacheControl.
         if not list(self.wheels_path.glob('CacheControl*.whl')):
