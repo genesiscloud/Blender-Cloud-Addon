@@ -175,12 +175,12 @@ class BlenderAddonFdist(BlenderAddonBdist):
     """Ensures that 'python setup.py fdist' creates a plain folder structure."""
 
     user_options = [
-            ('dest-path=', None, 'addon installation path'),
+        ('dest-path=', None, 'addon installation path'),
     ]
 
     def initialize_options(self):
         super().initialize_options()
-        self.dest_path = None # path that will contain the addon
+        self.dest_path = None  # path that will contain the addon
 
     def run(self):
         super().run()
