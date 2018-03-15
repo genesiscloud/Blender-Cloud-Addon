@@ -406,10 +406,10 @@ class BlenderCloudPreferences(AddonPreferences):
 
         # This is only needed when the project is set up for either Attract or Flamenco.
         project_box.prop(self, 'cloud_project_local_path',
-                         text='Local Cloud Project Path')
+                         text='Local Project Path')
 
     def draw_flamenco_buttons(self, flamenco_box, bcp: flamenco.FlamencoManagerGroup, context):
-        from .flamenco import bam_interface
+        from .flamenco import bat_interface
 
         header_row = flamenco_box.row(align=True)
         header_row.label('Flamenco:', icon_value=icon('CLOUD'))

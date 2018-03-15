@@ -61,6 +61,7 @@ def wheel_filename(fname_prefix: str) -> str:
 
 
 def load_wheels():
+    load_wheel('blender_asset_tracer', 'blender_asset_tracer')
     load_wheel('lockfile', 'lockfile')
     load_wheel('cachecontrol', 'CacheControl')
     load_wheel('pillarsdk', 'pillarsdk')

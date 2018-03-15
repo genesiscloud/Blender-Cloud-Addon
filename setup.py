@@ -37,8 +37,7 @@ sys.dont_write_bytecode = True
 
 # Download wheels from pypi. The specific versions are taken from requirements.txt
 wheels = [
-    'lockfile', 'pillarsdk',
-    'blender-bam',  # for compatibility with Blender 2.78
+    'lockfile', 'pillarsdk', 'blender-asset-tracer',
 ]
 
 

@@ -31,12 +31,12 @@ if "bpy" in locals():
     import importlib
 
     try:
-        bam_interface = importlib.reload(bam_interface)
+        bat_interface = importlib.reload(bat_interface)
         sdk = importlib.reload(sdk)
     except NameError:
-        from . import bam_interface, sdk
+        from . import bat_interface, sdk
 else:
-    from . import bam_interface, sdk
+    from . import bat_interface, sdk
 
 import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
@@ -181,8 +181,8 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             return
         self.log.info('Will output render files to %s', render_output)
 
-        # BAM-pack the files to the destination directory.
-        outfile, missing_sources = await self.bam_pack(filepath)
+        # BAT-pack the files to the destination directory.
+        outfile, missing_sources = await self.bat_pack(filepath)
         if not outfile:
             return
 
@@ -245,7 +245,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             json.dump(job_info, outfile, sort_keys=True, indent=4)
 
         # We can now remove the local copy we made with bpy.ops.wm.save_as_mainfile().
-        # Strictly speaking we can already remove it after the BAM-pack, but it may come in
+        # Strictly speaking we can already remove it after the BAT-pack, but it may come in
         # handy in case of failures.
         try:
             self.log.info('Removing temporary file %s', filepath)
@@ -314,13 +314,13 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         super().quit()
         bpy.context.window_manager.flamenco_status = 'IDLE'
 
-    async def bam_pack(self, filepath: Path) -> (typing.Optional[Path], typing.List[Path]):
-        """BAM-packs the blendfile to the destination directory.
+    async def bat_pack(self, filepath: Path) -> (typing.Optional[Path], typing.List[Path]):
+        """BAT-packs the blendfile to the destination directory.
 
         Returns the path of the destination blend file.
 
         :param filepath: the blend file to pack (i.e. the current blend file)
-        :returns: the destination blend file, or None if there were errors BAM-packing,
+        :returns: the destination blend file, or None if there were errors BAT-packing,
             and a list of missing paths.
         """
 
@@ -331,14 +331,12 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         # Create a unique directory that is still more or less identifyable.
         # This should work better than a random ID.
-        # BAM doesn't like output directories that end in '.blend'.
         unique_dir = '%s-%s-%s' % (datetime.now().isoformat('-').replace(':', ''),
                                    self.db_user['username'],
                                    filepath.stem)
         outdir = Path(prefs.flamenco_job_file_path) / unique_dir
-        outfile = outdir / filepath.name
-
-        exclusion_filter = prefs.flamenco_exclude_filter or None
+        projdir = Path(prefs.cloud_project_local_path)
+        exclusion_filter = (prefs.flamenco_exclude_filter or '').strip()
 
         try:
             outdir.mkdir(parents=True)
@@ -349,10 +347,12 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             return None, []
 
         try:
-            missing_sources = await bam_interface.bam_copy(filepath, outfile, exclusion_filter)
-        except bam_interface.CommandExecutionError as ex:
-            self.log.exception('Unable to execute BAM pack')
-            self.report({'ERROR'}, 'Unable to execute BAM pack: %s' % ex)
+            outfile, missing_sources = await bat_interface.bat_copy(
+                filepath, projdir, outdir, exclusion_filter)
+        except bat_interface.FileTransferError as ex:
+            self.log.error('Could not transfer %d files, starting with %s',
+                           len(ex.files_remaining), ex.files_remaining[0])
+            self.report({'ERROR'}, 'Unable to transfer %d files' % len(ex.files_remaining))
             self.quit()
             return None, []
 
@@ -380,7 +380,7 @@ class FLAMENCO_OT_scene_to_frame_range(FlamencoPollMixin, Operator):
 class FLAMENCO_OT_copy_files(Operator,
                              FlamencoPollMixin,
                              async_loop.AsyncModalOperatorMixin):
-    """Uses BAM to copy the current blendfile + dependencies to the target directory."""
+    """Uses BAT to copy the current blendfile + dependencies to the target directory."""
     bl_idname = 'flamenco.copy_files'
     bl_label = 'Copy files to target'
     bl_description = __doc__.rstrip('.')
@@ -392,11 +392,13 @@ class FLAMENCO_OT_copy_files(Operator,
         from ..blender import preferences
 
         context.window_manager.flamenco_status = 'PACKING'
-        exclusion_filter = preferences().flamenco_exclude_filter or None
+        prefs = preferences()
+        exclusion_filter = (prefs.flamenco_exclude_filter or '').strip()
 
-        missing_sources = await bam_interface.bam_copy(
+        missing_sources = await bat_interface.bat_copy(
             Path(context.blend_data.filepath),
-            Path(preferences().flamenco_job_file_path),
+            Path(prefs.cloud_project_local_path),
+            Path(prefs.flamenco_job_file_path),
             exclusion_filter
         )
 
@@ -788,7 +790,7 @@ def register():
     bpy.types.WindowManager.flamenco_status = EnumProperty(
         items=[
             ('IDLE', 'IDLE', 'Not doing anything.'),
-            ('PACKING', 'PACKING', 'BAM-packing all dependencies.'),
+            ('PACKING', 'PACKING', 'BAT-packing all dependencies.'),
             ('COMMUNICATING', 'COMMUNICATING', 'Communicating with Flamenco Server.'),
         ],
         name='flamenco_status',
