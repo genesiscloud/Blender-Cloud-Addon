@@ -99,4 +99,6 @@ def pyside_cache(propname):
 
 
 def redraw(self, context):
+    if context.area is None:
+        return
     context.area.tag_redraw()

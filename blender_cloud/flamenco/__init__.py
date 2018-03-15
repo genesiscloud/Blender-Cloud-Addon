@@ -170,7 +170,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         scene = context.scene
 
         # Save to a different file, specifically for Flamenco.
-        context.window_manager.flamenco_status = 'PACKING'
+        context.window_manager.flamenco_status = 'SAVING'
         filepath = await self._save_blendfile(context)
 
         # Determine where the render output will be stored.
@@ -348,7 +348,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         try:
             outfile, missing_sources = await bat_interface.bat_copy(
-                filepath, projdir, outdir, exclusion_filter)
+                bpy.context, filepath, projdir, outdir, exclusion_filter)
         except bat_interface.FileTransferError as ex:
             self.log.error('Could not transfer %d files, starting with %s',
                            len(ex.files_remaining), ex.files_remaining[0])
@@ -380,7 +380,10 @@ class FLAMENCO_OT_scene_to_frame_range(FlamencoPollMixin, Operator):
 class FLAMENCO_OT_copy_files(Operator,
                              FlamencoPollMixin,
                              async_loop.AsyncModalOperatorMixin):
-    """Uses BAT to copy the current blendfile + dependencies to the target directory."""
+    """Uses BAT to copy the current blendfile + dependencies to the target directory.
+
+    This operator is not used directly, but can be useful for testing.
+    """
     bl_idname = 'flamenco.copy_files'
     bl_label = 'Copy files to target'
     bl_description = __doc__.rstrip('.')
@@ -395,7 +398,8 @@ class FLAMENCO_OT_copy_files(Operator,
         prefs = preferences()
         exclusion_filter = (prefs.flamenco_exclude_filter or '').strip()
 
-        missing_sources = await bat_interface.bat_copy(
+        outpath, missing_sources = await bat_interface.bat_copy(
+            context,
             Path(context.blend_data.filepath),
             Path(prefs.cloud_project_local_path),
             Path(prefs.flamenco_job_file_path),
@@ -405,7 +409,8 @@ class FLAMENCO_OT_copy_files(Operator,
         if missing_sources:
             names = (ms.name for ms in missing_sources)
             self.report({'ERROR'}, 'Missing source files: %s' % '; '.join(names))
-
+        else:
+            self.report({'INFO'}, 'Written %s' % outpath)
         self.quit()
 
     def quit(self):
@@ -684,12 +689,16 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
                 layout.operator(FLAMENCO_OT_render.bl_idname,
                                 text='Render on Flamenco',
                                 icon='RENDER_ANIMATION')
-            elif flamenco_status == 'PACKING':
-                layout.label('Flamenco is packing your file + dependencies')
+            elif flamenco_status == 'INVESTIGATING':
+                layout.label('Investigating your files')
             elif flamenco_status == 'COMMUNICATING':
                 layout.label('Communicating with Flamenco Server')
-            else:
-                layout.label('Unknown Flamenco status %s' % flamenco_status)
+
+            if flamenco_status == 'TRANSFERRING':
+                layout.prop(context.window_manager, 'flamenco_progress',
+                            text=context.window_manager.flamenco_status_txt)
+            elif flamenco_status != 'IDLE':
+                layout.label(context.window_manager.flamenco_status_txt)
 
 
 def activate():
@@ -790,12 +799,30 @@ def register():
     bpy.types.WindowManager.flamenco_status = EnumProperty(
         items=[
             ('IDLE', 'IDLE', 'Not doing anything.'),
-            ('PACKING', 'PACKING', 'BAT-packing all dependencies.'),
+            ('SAVING', 'SAVING', 'Saving your file.'),
+            ('INVESTIGATING', 'INVESTIGATING', 'Finding all dependencies.'),
+            ('TRANSFERRING', 'TRANSFERRING', 'Transferring all dependencies.'),
             ('COMMUNICATING', 'COMMUNICATING', 'Communicating with Flamenco Server.'),
+            ('DONE', 'DONE', 'Not doing anything, but doing something earlier.'),
         ],
         name='flamenco_status',
         default='IDLE',
         description='Current status of the Flamenco add-on',
+        update=redraw)
+
+    bpy.types.WindowManager.flamenco_status_txt = StringProperty(
+        name='Flamenco Status',
+        default='',
+        description='Textual description of what Flamenco is doing',
+        update=redraw)
+
+    bpy.types.WindowManager.flamenco_progress = IntProperty(
+        name='Flamenco Progress',
+        default=0,
+        description='File transfer progress',
+        subtype='PERCENTAGE',
+        min=0,
+        max=100,
         update=redraw)
 
 
