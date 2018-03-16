@@ -59,8 +59,12 @@ def handle_project_update(_=None, _2=None):
             if name in ps and hasattr(prefs, name):
                 setattr(prefs, name, ps[name])
         if ps.get('flamenco_manager'):
-            prefs.flamenco_manager.manager = ps['flamenco_manager']
-            log.debug('setting flamenco manager to %s', ps['flamenco_manager'])
+            manager_id = ps['flamenco_manager']
+            log.debug('setting flamenco manager to %s', manager_id)
+            try:
+                prefs.flamenco_manager.manager = manager_id
+            except TypeError:
+                log.warning('manager %s for this project could not be found', manager_id)
 
     finally:
         project_settings_loading = False
