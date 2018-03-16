@@ -675,52 +675,54 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         render_output = render_output_path(context)
         if render_output is None:
             paths_layout.label('Unable to render with Flamenco, outside of project directory.')
+            return
+
+        labeled_row = paths_layout.split(0.25, align=True)
+        labeled_row.label('Output:')
+        prop_btn_row = labeled_row.row(align=True)
+
+        if context.scene.flamenco_do_override_output_path:
+            prop_btn_row.prop(context.scene, 'flamenco_override_output_path', text='')
+            op = FLAMENCO_OT_disable_output_path_override.bl_idname
+            icon = 'X'
         else:
+            prop_btn_row.label(str(render_output))
+            op = FLAMENCO_OT_enable_output_path_override.bl_idname
+            icon = 'GREASEPENCIL'
+        prop_btn_row.operator(op, icon=icon, text='')
+
+        props = prop_btn_row.operator(FLAMENCO_OT_explore_file_path.bl_idname,
+                                      text='', icon='DISK_DRIVE')
+        props.path = str(render_output.parent)
+
+        if context.scene.flamenco_do_override_output_path:
             labeled_row = paths_layout.split(0.25, align=True)
-            labeled_row.label('Output:')
-            prop_btn_row = labeled_row.row(align=True)
+            labeled_row.label('Effective Output Path:')
+            labeled_row.label(str(render_output))
 
-            if context.scene.flamenco_do_override_output_path:
-                prop_btn_row.prop(context.scene, 'flamenco_override_output_path', text='')
-                op = FLAMENCO_OT_disable_output_path_override.bl_idname
-                icon = 'X'
-            else:
-                prop_btn_row.label(str(render_output))
-                op = FLAMENCO_OT_enable_output_path_override.bl_idname
-                icon = 'GREASEPENCIL'
-            prop_btn_row.operator(op, icon=icon, text='')
-
-            props = prop_btn_row.operator(FLAMENCO_OT_explore_file_path.bl_idname,
-                                          text='', icon='DISK_DRIVE')
-            props.path = str(render_output.parent)
-
-            if context.scene.flamenco_do_override_output_path:
-                labeled_row = paths_layout.split(0.25, align=True)
-                labeled_row.label('Effective Output Path:')
-                labeled_row.label(str(render_output))
-
-            flamenco_status = context.window_manager.flamenco_status
-            if flamenco_status in {'IDLE', 'ABORTED', 'DONE'}:
-                layout.operator(FLAMENCO_OT_render.bl_idname,
-                                text='Render on Flamenco',
-                                icon='RENDER_ANIMATION')
-            elif flamenco_status == 'INVESTIGATING':
-                row = layout.row(align=True)
-                row.label('Investigating your files')
-                row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
-            elif flamenco_status == 'COMMUNICATING':
-                layout.label('Communicating with Flamenco Server')
-            elif flamenco_status == 'ABORTING':
-                row = layout.row(align=True)
-                row.label('Aborting, please wait.')
-                row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
-            if flamenco_status == 'TRANSFERRING':
-                row = layout.row(align=True)
-                row.prop(context.window_manager, 'flamenco_progress',
-                         text=context.window_manager.flamenco_status_txt)
-                row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
-            elif flamenco_status != 'IDLE' and context.window_manager.flamenco_status_txt:
-                layout.label(context.window_manager.flamenco_status_txt)
+        # Show current status of Flamenco.
+        flamenco_status = context.window_manager.flamenco_status
+        if flamenco_status in {'IDLE', 'ABORTED', 'DONE'}:
+            layout.operator(FLAMENCO_OT_render.bl_idname,
+                            text='Render on Flamenco',
+                            icon='RENDER_ANIMATION')
+        elif flamenco_status == 'INVESTIGATING':
+            row = layout.row(align=True)
+            row.label('Investigating your files')
+            row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
+        elif flamenco_status == 'COMMUNICATING':
+            layout.label('Communicating with Flamenco Server')
+        elif flamenco_status == 'ABORTING':
+            row = layout.row(align=True)
+            row.label('Aborting, please wait.')
+            row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
+        if flamenco_status == 'TRANSFERRING':
+            row = layout.row(align=True)
+            row.prop(context.window_manager, 'flamenco_progress',
+                     text=context.window_manager.flamenco_status_txt)
+            row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
+        elif flamenco_status != 'IDLE' and context.window_manager.flamenco_status_txt:
+            layout.label(context.window_manager.flamenco_status_txt)
 
 
 def activate():
