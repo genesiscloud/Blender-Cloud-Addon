@@ -310,10 +310,6 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         return filepath
 
-    def quit(self):
-        super().quit()
-        bpy.context.window_manager.flamenco_status = 'IDLE'
-
     async def bat_pack(self, filepath: Path) -> (typing.Optional[Path], typing.List[Path]):
         """BAT-packs the blendfile to the destination directory.
 
@@ -347,7 +343,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             return None, []
 
         try:
-            outfile, missing_sources = await bat_interface.bat_copy(
+            outfile, missing_sources = await bat_interface.copy(
                 bpy.context, filepath, projdir, outdir, exclusion_filter)
         except bat_interface.FileTransferError as ex:
             self.log.error('Could not transfer %d files, starting with %s',
@@ -356,6 +352,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             self.quit()
             return None, []
 
+        bpy.context.window_manager.flamenco_status = 'DONE'
         return outfile, missing_sources
 
 
@@ -398,7 +395,7 @@ class FLAMENCO_OT_copy_files(Operator,
         prefs = preferences()
         exclusion_filter = (prefs.flamenco_exclude_filter or '').strip()
 
-        outpath, missing_sources = await bat_interface.bat_copy(
+        outpath, missing_sources = await bat_interface.copy(
             context,
             Path(context.blend_data.filepath),
             Path(prefs.cloud_project_local_path),
@@ -411,11 +408,24 @@ class FLAMENCO_OT_copy_files(Operator,
             self.report({'ERROR'}, 'Missing source files: %s' % '; '.join(names))
         else:
             self.report({'INFO'}, 'Written %s' % outpath)
+        context.window_manager.flamenco_status = 'DONE'
         self.quit()
 
-    def quit(self):
-        super().quit()
-        bpy.context.window_manager.flamenco_status = 'IDLE'
+
+class FLAMENCO_OT_abort(Operator, FlamencoPollMixin):
+    """Aborts a running Flamenco file packing/transfer operation."""
+    bl_idname = 'flamenco.abort'
+    bl_label = 'Abort'
+    bl_description = __doc__.rstrip('.')
+
+    @classmethod
+    def poll(cls, context):
+        return super().poll(context) and context.window_manager.flamenco_status != 'ABORTING'
+
+    def execute(self, context):
+        context.window_manager.flamenco_status = 'ABORTING'
+        bat_interface.abort()
+        return {'FINISHED'}
 
 
 class FLAMENCO_OT_explore_file_path(FlamencoPollMixin,
@@ -685,19 +695,26 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
                 labeled_row.label(str(render_output))
 
             flamenco_status = context.window_manager.flamenco_status
-            if flamenco_status == 'IDLE':
+            if flamenco_status in {'IDLE', 'ABORTED', 'DONE'}:
                 layout.operator(FLAMENCO_OT_render.bl_idname,
                                 text='Render on Flamenco',
                                 icon='RENDER_ANIMATION')
             elif flamenco_status == 'INVESTIGATING':
-                layout.label('Investigating your files')
+                row = layout.row(align=True)
+                row.label('Investigating your files')
+                row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
             elif flamenco_status == 'COMMUNICATING':
                 layout.label('Communicating with Flamenco Server')
-
+            elif flamenco_status == 'ABORTING':
+                row = layout.row(align=True)
+                row.label('Aborting, please wait.')
+                row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
             if flamenco_status == 'TRANSFERRING':
-                layout.prop(context.window_manager, 'flamenco_progress',
-                            text=context.window_manager.flamenco_status_txt)
-            elif flamenco_status != 'IDLE':
+                row = layout.row(align=True)
+                row.prop(context.window_manager, 'flamenco_progress',
+                         text=context.window_manager.flamenco_status_txt)
+                row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
+            elif flamenco_status != 'IDLE' and context.window_manager.flamenco_status_txt:
                 layout.label(context.window_manager.flamenco_status_txt)
 
 
@@ -746,6 +763,7 @@ def register():
     bpy.utils.register_class(FLAMENCO_OT_explore_file_path)
     bpy.utils.register_class(FLAMENCO_OT_enable_output_path_override)
     bpy.utils.register_class(FLAMENCO_OT_disable_output_path_override)
+    bpy.utils.register_class(FLAMENCO_OT_abort)
     bpy.utils.register_class(FLAMENCO_PT_render)
 
     scene = bpy.types.Scene
@@ -804,6 +822,8 @@ def register():
             ('TRANSFERRING', 'TRANSFERRING', 'Transferring all dependencies.'),
             ('COMMUNICATING', 'COMMUNICATING', 'Communicating with Flamenco Server.'),
             ('DONE', 'DONE', 'Not doing anything, but doing something earlier.'),
+            ('ABORTING', 'ABORTING', 'User requested we stop doing something.'),
+            ('ABORTED', 'ABORTED', 'We stopped doing something.'),
         ],
         name='flamenco_status',
         default='IDLE',
