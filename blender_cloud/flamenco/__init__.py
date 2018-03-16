@@ -273,6 +273,11 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         self.quit()
 
+    def quit(self):
+        if bpy.context.window_manager.flamenco_status != 'ABORTED':
+            bpy.context.window_manager.flamenco_status = 'DONE'
+        super().quit()
+
     async def _save_blendfile(self, context):
         """Save to a different file, specifically for Flamenco.
 
