@@ -356,6 +356,11 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             self.report({'ERROR'}, 'Unable to transfer %d files' % len(ex.files_remaining))
             self.quit()
             return None, []
+        except bat_interface.Aborted:
+            self.log.warning('BAT Pack was aborted')
+            self.report({'WARNING'}, 'Aborted Flamenco file packing/transferring')
+            self.quit()
+            return None, []
 
         bpy.context.window_manager.flamenco_status = 'DONE'
         return outfile, missing_sources

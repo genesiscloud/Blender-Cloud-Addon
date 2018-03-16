@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 
 _running_packer = None  # type: pack.Packer
 _packer_lock = threading.RLock()
+Aborted = pack.Aborted
 
 
 class BatProgress(progress.Callback):
