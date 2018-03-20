@@ -397,21 +397,34 @@ class FLAMENCO_OT_copy_files(Operator,
 
     stop_upon_exception = True
 
-    async def async_execute(self, context):
+    async def async_execute(self, context) -> None:
         from pathlib import Path
         from ..blender import preferences
 
-        context.window_manager.flamenco_status = 'PACKING'
         prefs = preferences()
         exclusion_filter = (prefs.flamenco_exclude_filter or '').strip()
 
-        outpath, missing_sources = await bat_interface.copy(
-            context,
-            Path(context.blend_data.filepath),
-            Path(prefs.cloud_project_local_path),
-            Path(prefs.flamenco_job_file_path),
-            exclusion_filter
-        )
+        storage_path = prefs.flamenco_job_file_path  # type: str
+
+        try:
+            outpath, missing_sources = await bat_interface.copy(
+                context,
+                Path(context.blend_data.filepath),
+                Path(prefs.cloud_project_local_path),
+                Path(storage_path),
+                exclusion_filter
+            )
+        except bat_interface.FileTransferError as ex:
+            self.log.error('Could not transfer %d files, starting with %s',
+                           len(ex.files_remaining), ex.files_remaining[0])
+            self.report({'ERROR'}, 'Unable to transfer %d files' % len(ex.files_remaining))
+            self.quit()
+            return
+        except bat_interface.Aborted:
+            self.log.warning('BAT Pack was aborted')
+            self.report({'WARNING'}, 'Aborted Flamenco file packing/transferring')
+            self.quit()
+            return
 
         if missing_sources:
             names = (ms.name for ms in missing_sources)
@@ -711,6 +724,8 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
             layout.operator(FLAMENCO_OT_render.bl_idname,
                             text='Render on Flamenco',
                             icon='RENDER_ANIMATION')
+            if bpy.app.debug:
+                layout.operator(FLAMENCO_OT_copy_files.bl_idname)
         elif flamenco_status == 'INVESTIGATING':
             row = layout.row(align=True)
             row.label('Investigating your files')

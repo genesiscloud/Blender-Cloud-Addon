@@ -6,18 +6,19 @@ import threading
 import typing
 import pathlib
 
-from blender_asset_tracer import pack
-from blender_asset_tracer.pack import progress
-
-from blender_asset_tracer.pack.transfer import FileTransferError
-
 import bpy
+from blender_asset_tracer import pack
+from blender_asset_tracer.pack import progress, transfer
+
 
 log = logging.getLogger(__name__)
 
 _running_packer = None  # type: pack.Packer
 _packer_lock = threading.RLock()
+
+# For using in other parts of the add-on, so only this file imports BAT.
 Aborted = pack.Aborted
+FileTransferError = transfer.FileTransferError
 
 
 class BatProgress(progress.Callback):
