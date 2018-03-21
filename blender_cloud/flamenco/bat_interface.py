@@ -29,62 +29,64 @@ class BatProgress(progress.Callback):
     background thread.
     """
 
-    def __init__(self, context) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.wm = context.window_manager
         self.loop = asyncio.get_event_loop()
 
-    def txt(self, msg: str):
+    def _set_attr(self, attr: str, value):
+
+        async def do_it():
+            setattr(bpy.context.window_manager, attr, value)
+
+        asyncio.run_coroutine_threadsafe(do_it(), loop=self.loop)
+
+    def _txt(self, msg: str):
         """Set a text in a thread-safe way."""
+        self._set_attr('flamenco_status_txt', msg)
 
-        async def set_text():
-            self.wm.flamenco_status_txt = msg
-
-        asyncio.run_coroutine_threadsafe(set_text(), loop=self.loop)
-
-    def status(self, status: str):
+    def _status(self, status: str):
         """Set the flamenco_status property in a thread-safe way."""
+        self._set_attr('flamenco_status', status)
 
-        async def set_status():
-            self.wm.flamenco_status = status
-
-        asyncio.run_coroutine_threadsafe(set_status(), loop=self.loop)
+    def _progress(self, progress: int):
+        """Set the flamenco_progress property in a thread-safe way."""
+        self._set_attr('flamenco_progress', progress)
 
     def pack_start(self) -> None:
-        self.txt('Starting BAT Pack operation')
+        self._txt('Starting BAT Pack operation')
 
     def pack_done(self,
                   output_blendfile: pathlib.Path,
                   missing_files: typing.Set[pathlib.Path]) -> None:
         if missing_files:
-            self.txt('There were %d missing files' % len(missing_files))
+            self._txt('There were %d missing files' % len(missing_files))
         else:
-            self.txt('Pack of %s done' % output_blendfile.name)
+            self._txt('Pack of %s done' % output_blendfile.name)
 
     def pack_aborted(self):
-        self.txt('Aborted')
-        self.status('ABORTED')
+        self._txt('Aborted')
+        self._status('ABORTED')
 
     def trace_blendfile(self, filename: pathlib.Path) -> None:
         """Called for every blendfile opened when tracing dependencies."""
-        self.txt('Inspecting %s' % filename.name)
+        self._txt('Inspecting %s' % filename.name)
 
     def trace_asset(self, filename: pathlib.Path) -> None:
         if filename.stem == '.blend':
             return
-        self.txt('Found asset %s' % filename.name)
+        self._txt('Found asset %s' % filename.name)
 
     def rewrite_blendfile(self, orig_filename: pathlib.Path) -> None:
-        self.txt('Rewriting %s' % orig_filename.name)
+        self._txt('Rewriting %s' % orig_filename.name)
 
     def transfer_file(self, src: pathlib.Path, dst: pathlib.Path) -> None:
-        self.txt('Transferring %s' % src.name)
+        self._txt('Transferring %s' % src.name)
 
     def transfer_file_skipped(self, src: pathlib.Path, dst: pathlib.Path) -> None:
-        self.txt('Skipped %s' % src.name)
+        self._txt('Skipped %s' % src.name)
 
     def transfer_progress(self, total_bytes: int, transferred_bytes: int) -> None:
-        self.wm.flamenco_progress = 100 * transferred_bytes / total_bytes
+        self._progress(round(100 * transferred_bytes / total_bytes))
 
     def missing_file(self, filename: pathlib.Path) -> None:
         # TODO(Sybren): report missing files in a nice way
@@ -112,7 +114,7 @@ async def copy(context,
             if exclusion_filter:
                 packer.exclude(*exclusion_filter.split())
 
-            packer.progress_cb = BatProgress(context)
+            packer.progress_cb = BatProgress()
             _running_packer = packer
 
         log.debug('awaiting strategise')
