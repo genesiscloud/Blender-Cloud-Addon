@@ -182,7 +182,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         self.log.info('Will output render files to %s', render_output)
 
         # BAT-pack the files to the destination directory.
-        outfile, missing_sources = await self.bat_pack(filepath)
+        outdir, outfile, missing_sources = await self.bat_pack(filepath)
         if not outfile:
             return
 
@@ -238,7 +238,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             return
 
         # Store the job ID in a file in the output dir.
-        with open(str(outfile.parent / 'jobinfo.json'), 'w', encoding='utf8') as outfile:
+        with open(str(outdir / 'jobinfo.json'), 'w', encoding='utf8') as outfile:
             import json
 
             job_info['missing_files'] = [str(mf) for mf in missing_sources]
@@ -315,14 +315,14 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         return filepath
 
-    async def bat_pack(self, filepath: Path) -> (typing.Optional[Path], typing.List[Path]):
+    async def bat_pack(self, filepath: Path) -> (Path, typing.Optional[Path], typing.List[Path]):
         """BAT-packs the blendfile to the destination directory.
 
         Returns the path of the destination blend file.
 
         :param filepath: the blend file to pack (i.e. the current blend file)
-        :returns: the destination blend file, or None if there were errors BAT-packing,
-            and a list of missing paths.
+        :returns: the destination directory, the destination blend file or None
+            if there were errors BAT-packing, and a list of missing paths.
         """
 
         from datetime import datetime
@@ -345,7 +345,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             self.log.exception('Unable to create output path %s', outdir)
             self.report({'ERROR'}, 'Unable to create output path: %s' % ex)
             self.quit()
-            return None, []
+            return outdir, None, []
 
         try:
             outfile, missing_sources = await bat_interface.copy(
@@ -355,15 +355,15 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                            len(ex.files_remaining), ex.files_remaining[0])
             self.report({'ERROR'}, 'Unable to transfer %d files' % len(ex.files_remaining))
             self.quit()
-            return None, []
+            return outdir, None, []
         except bat_interface.Aborted:
             self.log.warning('BAT Pack was aborted')
             self.report({'WARNING'}, 'Aborted Flamenco file packing/transferring')
             self.quit()
-            return None, []
+            return outdir, None, []
 
         bpy.context.window_manager.flamenco_status = 'DONE'
-        return outfile, missing_sources
+        return outdir, outfile, missing_sources
 
 
 def scene_frame_range(context) -> str:
