@@ -1,5 +1,11 @@
 # Blender Cloud changelog
 
+## Version 2.0 (in development)
+
+- Replace BAM with BAT🦇.
+- Don't crash the texture browser when an invalid texture is seen.
+
+
 ## Version 1.8 (2018-01-03)
 
 - Distinguish between 'please subscribe' (to get a new subscription) and 'please renew' (to renew an
