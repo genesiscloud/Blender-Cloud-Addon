@@ -4,6 +4,7 @@
 
 - Replace BAM with BAT🦇.
 - Don't crash the texture browser when an invalid texture is seen.
+- Support colour strips as Attract shots.
 
 
 ## Version 1.8 (2018-01-03)

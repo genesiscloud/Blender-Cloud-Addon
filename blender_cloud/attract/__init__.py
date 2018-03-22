@@ -186,7 +186,7 @@ class AttractToolsPanel(AttractPollMixin, Panel):
     def draw(self, context):
         strip = active_strip(context)
         layout = self.layout
-        strip_types = {'MOVIE', 'IMAGE', 'META'}
+        strip_types = {'MOVIE', 'IMAGE', 'META', 'COLOR'}
 
         selshots = list(selected_shots(context))
         if strip and strip.type in strip_types and strip.atc_object_id:
