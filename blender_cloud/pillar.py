@@ -632,7 +632,11 @@ async def download_texture_thumbnail(texture_node, desired_size: str,
         # Cached headers are stored next to thumbnails in sidecar files.
         header_store = '%s.headers' % thumb_path
 
-        await download_to_file(thumb_url, thumb_path, header_store=header_store, future=future)
+        try:
+            await download_to_file(thumb_url, thumb_path, header_store=header_store, future=future)
+        except requests.exceptions.HTTPError as ex:
+            log.error('Unable to download %s: %s', thumb_url, ex)
+            thumb_path = 'ERROR'
 
     loop.call_soon_threadsafe(thumbnail_loaded, texture_node, file_desc, thumb_path)
 

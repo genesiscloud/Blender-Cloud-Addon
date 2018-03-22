@@ -82,6 +82,7 @@ class MenuItem:
     DEFAULT_ICONS = {
         'FOLDER': os.path.join(library_icons_path, 'folder.png'),
         'SPINNER': os.path.join(library_icons_path, 'spinner.png'),
+        'ERROR': os.path.join(library_icons_path, 'error.png'),
     }
 
     FOLDER_NODE_TYPES = {'group_texture', 'group_hdri', UpNode.NODE_TYPE, ProjectNode.NODE_TYPE}
@@ -99,6 +100,7 @@ class MenuItem:
         self.node = node  # pillarsdk.Node, contains 'node_type' key to indicate type
         self.file_desc = file_desc  # pillarsdk.File object, or None if a 'folder' node.
         self.label_text = label_text
+        self.small_text = self._small_text_from_node()
         self._thumb_path = ''
         self.icon = None
         self._is_folder = node['node_type'] in self.FOLDER_NODE_TYPES
@@ -117,6 +119,26 @@ class MenuItem:
         self.y = 0
         self.width = 0
         self.height = 0
+
+    def _small_text_from_node(self) -> str:
+        """Return the components of the texture (i.e. which map types are available)."""
+
+        if not self.node:
+            return ''
+
+        try:
+            node_files = self.node.properties.files
+        except AttributeError:
+            # Happens for nodes that don't have .properties.files.
+            return ''
+        if not node_files:
+            return ''
+
+        map_types = {f.map_type for f in node_files if f.map_type}
+        map_types.discard('color')  # all textures have colour
+        if not map_types:
+            return ''
+        return ', '.join(sorted(map_types))
 
     def sort_key(self):
         """Key for sorting lists of MenuItems."""
@@ -159,6 +181,11 @@ class MenuItem:
         if label_text is not None:
             self.label_text = label_text
 
+        if thumb_path == 'ERROR':
+            self.small_text = 'This open is broken'
+        else:
+            self.small_text = self._small_text_from_node()
+
     @property
     def is_folder(self) -> bool:
         return self._is_folder
@@ -185,15 +212,17 @@ class MenuItem:
         bgl.glRectf(self.x, self.y, self.x + self.width, self.y + self.height)
 
         texture = self.icon
-        err = texture.gl_load(filter=bgl.GL_NEAREST, mag=bgl.GL_NEAREST)
-        assert not err, 'OpenGL error: %i' % err
+        if texture:
+            err = texture.gl_load(filter=bgl.GL_NEAREST, mag=bgl.GL_NEAREST)
+            assert not err, 'OpenGL error: %i' % err
 
         bgl.glColor4f(0.0, 0.0, 1.0, 0.5)
         # bgl.glLineWidth(1.5)
 
         # ------ TEXTURE ---------#
-        bgl.glBindTexture(bgl.GL_TEXTURE_2D, texture.bindcode[0])
-        bgl.glEnable(bgl.GL_TEXTURE_2D)
+        if texture:
+            bgl.glBindTexture(bgl.GL_TEXTURE_2D, texture.bindcode[0])
+            bgl.glEnable(bgl.GL_TEXTURE_2D)
         bgl.glBlendFunc(bgl.GL_SRC_ALPHA, bgl.GL_ONE_MINUS_SRC_ALPHA)
 
         bgl.glColor4f(1, 1, 1, 1)
@@ -210,7 +239,8 @@ class MenuItem:
         bgl.glDisable(bgl.GL_TEXTURE_2D)
         bgl.glDisable(bgl.GL_BLEND)
 
-        texture.gl_free()
+        if texture:
+            texture.gl_free()
 
         # draw some text
         font_id = 0
@@ -221,24 +251,11 @@ class MenuItem:
         blf.size(font_id, self.text_size, text_dpi)
         blf.draw(font_id, self.label_text)
 
-        # Draw the components of the texture (i.e. which map types are available)
-        try:
-            node_files = self.node.properties.files
-        except AttributeError:
-            # Happens for nodes that don't have .properties.files.
-            node_files = None
-        if not node_files:
-            return
-
-        map_types = {f.map_type for f in node_files if f.map_type}
-        map_types.discard('color')  # all textures have colour
-        if not map_types:
-            return
-
+        # draw the small text
         bgl.glColor4f(1.0, 1.0, 1.0, 0.5)
         blf.size(font_id, self.text_size_small, text_dpi)
         blf.position(font_id, text_x, self.y + 0.5 * self.text_size_small, 0)
-        blf.draw(font_id, ', '.join(sorted(map_types)))
+        blf.draw(font_id, self.small_text)
 
     def hits(self, mouse_x: int, mouse_y: int) -> bool:
         return self.x < mouse_x < self.x + self.width and self.y < mouse_y < self.y + self.height
