@@ -37,7 +37,8 @@ sys.dont_write_bytecode = True
 
 # Download wheels from pypi. The specific versions are taken from requirements.txt
 wheels = [
-    'lockfile', 'pillarsdk', 'blender-asset-tracer',
+    'lockfile', 'pillarsdk',
+    # 'blender-asset-tracer',
 ]
 
 
@@ -64,6 +65,7 @@ class BuildWheels(Command):
         self.wheels_path = None  # path that will contain the installed wheels.
         self.deps_path = None  # path in which dependencies are built.
         self.cachecontrol_path = None  # subdir of deps_path containing CacheControl
+        self.bat_path = None  # subdir of deps_path containing Blender-Asset-Tracer
 
     def finalize_options(self):
         self.my_path = pathlib.Path(__file__).resolve().parent
@@ -73,6 +75,7 @@ class BuildWheels(Command):
         self.deps_path = set_default_path(self.deps_path, self.my_path / 'build/deps')
         self.cachecontrol_path = set_default_path(self.cachecontrol_path,
                                                   self.deps_path / 'cachecontrol')
+        self.bat_path = self.deps_path / 'bat'
 
     def run(self):
         log.info('Storing wheels in %s', self.wheels_path)
@@ -111,6 +114,14 @@ class BuildWheels(Command):
                            'https://github.com/sybrenstuvel/cachecontrol.git',
                            'sybren-filecache-delete-crash-fix')
             self.build_copy_wheel(self.cachecontrol_path)
+
+        # Build development version of BAT.
+        if not list(self.wheels_path.glob('blender-asset-tracer*.whl')):
+            log.info('Building BAT in %s', self.bat_path)
+            self.git_clone(self.bat_path,
+                           'https://gitlab.com/dr.sybren/blender-asset-tracer.git',
+                           'master')
+            self.build_copy_wheel(self.bat_path)
 
         # Ensure that the wheels are added to the data files.
         self.distribution.data_files.append(
