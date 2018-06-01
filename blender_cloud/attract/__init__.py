@@ -931,7 +931,10 @@ def activate():
 
     log.info('Activating Attract')
     attract_is_active = True
-    bpy.app.handlers.scene_update_post.append(scene_update_post_handler)
+
+    # TODO: properly fix 2.8 compatibility; this is just a workaround.
+    if hasattr(bpy.app.handlers, 'scene_update_post'):
+        bpy.app.handlers.scene_update_post.append(scene_update_post_handler)
     draw.callback_enable()
 
 
@@ -942,11 +945,13 @@ def deactivate():
     attract_is_active = False
     draw.callback_disable()
 
-    try:
-        bpy.app.handlers.scene_update_post.remove(scene_update_post_handler)
-    except ValueError:
-        # This is thrown when scene_update_post_handler does not exist in the handler list.
-        pass
+    # TODO: properly fix 2.8 compatibility; this is just a workaround.
+    if hasattr(bpy.app.handlers, 'scene_update_post'):
+        try:
+            bpy.app.handlers.scene_update_post.remove(scene_update_post_handler)
+        except ValueError:
+            # This is thrown when scene_update_post_handler does not exist in the handler list.
+            pass
 
 
 def register():
