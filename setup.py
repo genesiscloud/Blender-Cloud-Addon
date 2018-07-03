@@ -37,8 +37,7 @@ sys.dont_write_bytecode = True
 
 # Download wheels from pypi. The specific versions are taken from requirements.txt
 wheels = [
-    'lockfile', 'pillarsdk',
-    # 'blender-asset-tracer',
+    'lockfile', 'pillarsdk', 'blender-asset-tracer',
 ]
 
 
@@ -114,14 +113,6 @@ class BuildWheels(Command):
                            'https://github.com/sybrenstuvel/cachecontrol.git',
                            'sybren-filecache-delete-crash-fix')
             self.build_copy_wheel(self.cachecontrol_path)
-
-        # Build development version of BAT.
-        if not list(self.wheels_path.glob('blender-asset-tracer*.whl')):
-            log.info('Building BAT in %s', self.bat_path)
-            self.git_clone(self.bat_path,
-                           'https://gitlab.com/dr.sybren/blender-asset-tracer.git',
-                           'master')
-            self.build_copy_wheel(self.bat_path)
 
         # Ensure that the wheels are added to the data files.
         self.distribution.data_files.append(
