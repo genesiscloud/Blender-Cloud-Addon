@@ -22,7 +22,7 @@ bl_info = {
     'name': 'Blender Cloud',
     "author": "Sybren A. Stüvel, Francesco Siddi, Inês Almeida, Antony Riakiotakis",
     'version': (1, 8, 9999),
-    'blender': (2, 77, 0),
+    'blender': (2, 80, 0),
     'location': 'Addon Preferences panel, and Ctrl+Shift+Alt+A anywhere for texture browser',
     'description': 'Texture library browser and Blender Sync. Requires the Blender ID addon '
                    'and Blender 2.77a or newer.',
