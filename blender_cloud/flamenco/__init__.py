@@ -881,34 +881,17 @@ def unregister():
     deactivate()
     bpy.utils.unregister_module(__name__)
 
-    try:
-        del bpy.types.Scene.flamenco_render_fchunk_size
-    except AttributeError:
-        pass
-    try:
-        del bpy.types.Scene.flamenco_render_schunk_count
-    except AttributeError:
-        pass
-    try:
-        del bpy.types.Scene.flamenco_render_frame_range
-    except AttributeError:
-        pass
-    try:
-        del bpy.types.Scene.flamenco_render_job_type
-    except AttributeError:
-        pass
-    try:
-        del bpy.types.Scene.flamenco_render_job_priority
-    except AttributeError:
-        pass
-    try:
-        del bpy.types.Scene.flamenco_do_override_output_path
-    except AttributeError:
-        pass
-    try:
-        del bpy.types.Scene.flamenco_override_output_path
-    except AttributeError:
-        pass
+    for name in ('flamenco_render_fchunk_size',
+                 'flamenco_render_schunk_count',
+                 'flamenco_render_frame_range',
+                 'flamenco_render_job_type',
+                 'flamenco_render_job_priority',
+                 'flamenco_do_override_output_path',
+                 'flamenco_override_output_path'):
+        try:
+            delattr(bpy.types.Scene, name)
+        except AttributeError:
+            pass
     try:
         del bpy.types.WindowManager.flamenco_status
     except AttributeError:
