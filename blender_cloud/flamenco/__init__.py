@@ -336,8 +336,12 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                                    self.db_user['username'],
                                    filepath.stem)
         outdir = Path(prefs.flamenco_job_file_path) / unique_dir
-        projdir = Path(prefs.cloud_project_local_path)
+        proj_abspath = bpy.path.abspath(prefs.cloud_project_local_path)
+        projdir = Path(proj_abspath).resolve()
         exclusion_filter = (prefs.flamenco_exclude_filter or '').strip()
+
+        self.log.debug('outdir : %s', outdir)
+        self.log.debug('projdir: %s', projdir)
 
         try:
             outdir.mkdir(parents=True)
