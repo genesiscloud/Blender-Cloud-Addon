@@ -6,6 +6,7 @@
 - Don't crash the texture browser when an invalid texture is seen.
 - Support colour strips as Attract shots.
 - Blender 2.8 support (work in progress).
+- Flamenco: allow jobs to be created in 'paused' state.
 
 
 ## Version 1.8 (2018-01-03)

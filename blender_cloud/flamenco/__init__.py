@@ -231,7 +231,8 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                                         scene.flamenco_render_job_type,
                                         settings,
                                         'Render %s' % filepath.name,
-                                        priority=scene.flamenco_render_job_priority)
+                                        priority=scene.flamenco_render_job_priority,
+                                        start_paused=scene.flamenco_start_paused)
         except Exception as ex:
             self.report({'ERROR'}, 'Error creating Flamenco job: %s' % ex)
             self.quit()
@@ -530,7 +531,8 @@ async def create_job(user_id: str,
                      job_name: str = None,
                      *,
                      priority: int = 50,
-                     job_description: str = None) -> dict:
+                     job_description: str = None,
+                     start_paused=False) -> dict:
     """Creates a render job at Flamenco Server, returning the job object as dictionary."""
 
     import json
@@ -549,6 +551,8 @@ async def create_job(user_id: str,
     }
     if job_description:
         job_attrs['description'] = job_description
+    if start_paused:
+        job_attrs['start_paused'] = True
 
     log.info('Going to create Flamenco job:\n%s',
              json.dumps(job_attrs, indent=4, sort_keys=True))
@@ -680,6 +684,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
 
         layout.prop(context.scene, 'flamenco_render_job_priority')
         layout.prop(context.scene, 'flamenco_render_fchunk_size')
+        layout.prop(context.scene, 'flamenco_start_paused')
 
         if getattr(context.scene, 'flamenco_render_job_type', None) == 'blender-render-progressive':
             layout.prop(context.scene, 'flamenco_render_schunk_count')
@@ -824,6 +829,13 @@ def register():
         ]
     )
 
+    scene.flamenco_start_paused = BoolProperty(
+        name='Start Paused',
+        description="When enabled, the job will be created in 'paused' state, rather than"
+                    " 'queued'. The job will need manual queueing before it will start",
+        default=False,
+    )
+
     scene.flamenco_render_job_priority = IntProperty(
         name='Job Priority',
         min=0,
@@ -885,6 +897,7 @@ def unregister():
                  'flamenco_render_schunk_count',
                  'flamenco_render_frame_range',
                  'flamenco_render_job_type',
+                 'flamenco_start_paused',
                  'flamenco_render_job_priority',
                  'flamenco_do_override_output_path',
                  'flamenco_override_output_path'):
