@@ -120,11 +120,15 @@ class FLAMENCO_OT_fmanagers(async_loop.AsyncModalOperatorMixin,
 
         from .sdk import Manager
         from ..pillar import pillar_call
+        from ..blender import preferences
+
+        prefs = preferences()
 
         self.log.info('Going to fetch managers for user %s', self.user_id)
 
         self.mypref.status = 'FETCHING'
-        managers = await pillar_call(Manager.all)
+        params = {'where': '{"projects" : "%s"}' % prefs.project.project}
+        managers = await pillar_call(Manager.all, params)
 
         # We need to convert to regular dicts before storing in ID properties.
         # Also don't store more properties than we need.
