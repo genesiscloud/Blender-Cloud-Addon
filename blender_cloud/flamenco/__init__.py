@@ -68,7 +68,7 @@ class FlamencoManagerGroup(PropertyGroup):
         items=available_managers,
         name='Flamenco Manager',
         description='Which Flamenco Manager to use for jobs',
-        update=project_specific.store,
+        update=project_specific.updated_manager,
     )
 
     status = EnumProperty(
@@ -89,6 +89,7 @@ class FlamencoManagerGroup(PropertyGroup):
     @available_managers.setter
     def available_managers(self, new_managers):
         self['available_managers'] = new_managers
+        project_specific.updated_manager()
 
 
 class FlamencoPollMixin:
@@ -675,6 +676,24 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         from ..blender import preferences
 
         prefs = preferences()
+
+        labeled_row = layout.split(0.25, align=True)
+        labeled_row.label('Manager:')
+        prop_btn_row = labeled_row.row(align=True)
+
+        bcp = prefs.flamenco_manager
+        if bcp.status in {'NONE', 'IDLE'}:
+            if not bcp.available_managers or not bcp.manager:
+                prop_btn_row.operator('flamenco.managers',
+                                      text='Find Flamenco Managers',
+                                      icon='FILE_REFRESH')
+            else:
+                prop_btn_row.prop(bcp, 'manager', text='')
+                prop_btn_row.operator('flamenco.managers',
+                                      text='',
+                                      icon='FILE_REFRESH')
+        else:
+            prop_btn_row.label('Fetching available managers.')
 
         labeled_row = layout.split(0.25, align=True)
         labeled_row.label('Job Type:')

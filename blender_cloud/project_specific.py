@@ -63,6 +63,12 @@ def handle_project_update(_=None, _2=None):
             log.debug('setting flamenco manager to %s', manager_id)
             try:
                 prefs.flamenco_manager.manager = manager_id
+                if 'flamenco_managers_settings' in ps and \
+                        prefs.flamenco_manager.manager in ps['flamenco_managers_settings']:
+                    mps = ps['flamenco_managers_settings'][prefs.flamenco_manager.manager]
+                    setattr(prefs, 'flamenco_job_file_path', mps['file_path'])
+                    setattr(prefs, 'flamenco_job_output_path', mps['output_path'])
+                    setattr(prefs, 'flamenco_job_output_strip_components', mps['output_strip_components'])
             except TypeError:
                 log.warning('manager %s for this project could not be found', manager_id)
 
@@ -91,7 +97,24 @@ def store(_=None, _2=None):
 
     for name in PROJECT_SPECIFIC_SIMPLE_PROPS:
         ps[name] = getattr(prefs, name)
-    ps['flamenco_manager'] = prefs.flamenco_manager.manager
+
+    if ps['flamenco_manager'] != prefs.flamenco_manager.manager:
+        # In this case we want to load the manager settings, not save them
+        # This is done in update_manager (connected to the FlamencoManagerGroup.manager update handle)
+        ps['flamenco_manager'] = prefs.flamenco_manager.manager
+    else:
+        # If the manager did not change, update its settings
+        if 'flamenco_managers_settings' not in ps:
+            ps['flamenco_managers_settings'] = {}
+        if prefs.flamenco_manager.manager not in ps['flamenco_managers_settings']:
+            ps['flamenco_managers_settings'][prefs.flamenco_manager.manager] = {}
+
+        ps['flamenco_managers_settings'][prefs.flamenco_manager.manager]['file_path'] = getattr(
+            prefs, 'flamenco_job_file_path')
+        ps['flamenco_managers_settings'][prefs.flamenco_manager.manager]['output_path'] = getattr(
+            prefs, 'flamenco_job_output_path')
+        ps['flamenco_managers_settings'][prefs.flamenco_manager.manager]['output_strip_components'] = getattr(
+            prefs, 'flamenco_job_output_strip_components')
 
     if log.isEnabledFor(logging.DEBUG):
         from pprint import pformat
@@ -100,6 +123,19 @@ def store(_=None, _2=None):
         else:
             ps_to_log = ps
         log.debug('saving project-specific settings:\n%s', pformat(ps_to_log))
-
     all_settings[project_id] = ps
     prefs['project_settings'] = all_settings
+
+
+def updated_manager(_=None, _2=None):
+    """When the manager selector in FlamencoManagerGroup is updated.
+    
+    If a new manager is selected:
+    - store the manager id in the flamenco_manager key
+    - load the configuration of such manager in the settings fields
+    """
+    global project_settings_loading
+    if project_settings_loading:
+        return
+    store()
+    handle_project_update()
