@@ -817,8 +817,10 @@ def flamenco_do_override_output_path_updated(scene, context):
 # FlamencoManagerGroup needs to be registered before classes that use it.
 _rna_classes = [FlamencoManagerGroup]
 _rna_classes.extend(
-    cls for cls in locals()
-    if isinstance(cls, type) and hasattr(cls, 'bl_rna') and cls not in _rna_classes
+    cls for cls in locals().values()
+    if (isinstance(cls, type)
+        and cls.__name__.startswith('FLAMENCO')
+        and cls not in _rna_classes)
 )
 
 
