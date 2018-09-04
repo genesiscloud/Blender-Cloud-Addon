@@ -98,7 +98,7 @@ def store(_=None, _2=None):
     for name in PROJECT_SPECIFIC_SIMPLE_PROPS:
         ps[name] = getattr(prefs, name)
 
-    if ps['flamenco_manager'] != prefs.flamenco_manager.manager:
+    if ps.get('flamenco_manager') != prefs.flamenco_manager.manager:
         # In this case we want to load the manager settings, not save them
         # This is done in update_manager (connected to the FlamencoManagerGroup.manager update handle)
         ps['flamenco_manager'] = prefs.flamenco_manager.manager
