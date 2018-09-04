@@ -93,28 +93,24 @@ def store(_=None, _2=None):
     prefs = preferences()
     project_id = prefs.project.project
     all_settings = prefs.get('project_settings', {})
-    ps = all_settings.get(project_id, {})
+    ps = all_settings.get(project_id, {})  # either a dict or bpy.types.IDPropertyGroup
 
     for name in PROJECT_SPECIFIC_SIMPLE_PROPS:
         ps[name] = getattr(prefs, name)
 
     if ps.get('flamenco_manager') != prefs.flamenco_manager.manager:
-        # In this case we want to load the manager settings, not save them
-        # This is done in update_manager (connected to the FlamencoManagerGroup.manager update handle)
+        # In this case we want to load the manager settings, not save them.
+        # This is done in update_manager (connected to the FlamencoManagerGroup.manager
+        # update handle).
         ps['flamenco_manager'] = prefs.flamenco_manager.manager
     else:
-        # If the manager did not change, update its settings
-        if 'flamenco_managers_settings' not in ps:
-            ps['flamenco_managers_settings'] = {}
-        if prefs.flamenco_manager.manager not in ps['flamenco_managers_settings']:
-            ps['flamenco_managers_settings'][prefs.flamenco_manager.manager] = {}
-
-        ps['flamenco_managers_settings'][prefs.flamenco_manager.manager]['file_path'] = getattr(
-            prefs, 'flamenco_job_file_path')
-        ps['flamenco_managers_settings'][prefs.flamenco_manager.manager]['output_path'] = getattr(
-            prefs, 'flamenco_job_output_path')
-        ps['flamenco_managers_settings'][prefs.flamenco_manager.manager]['output_strip_components'] = getattr(
-            prefs, 'flamenco_job_output_strip_components')
+        # If the manager did not change, update its settings.
+        per_manager_settings = ps.get('flamenco_managers_settings', {})
+        per_manager_settings[prefs.flamenco_manager.manager] = {
+            'file_path': prefs.flamenco_job_file_path,
+            'output_path': prefs.flamenco_job_output_path,
+            'output_strip_components': prefs.flamenco_job_output_strip_components}
+        log.debug('project-specific settings type: %s', type(ps))
 
     if log.isEnabledFor(logging.DEBUG):
         from pprint import pformat
