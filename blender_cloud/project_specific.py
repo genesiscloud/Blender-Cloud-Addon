@@ -1,5 +1,6 @@
 """Handle saving and loading project-specific settings."""
 
+import contextlib
 import logging
 
 # Names of BlenderCloudPreferences properties that are both project-specific
@@ -16,6 +17,17 @@ log = logging.getLogger(__name__)
 project_settings_loading = False
 
 
+@contextlib.contextmanager
+def mark_as_loading():
+    """Sets project_settings_loading=True while the context is active."""
+    global project_settings_loading
+    project_settings_loading = True
+    try:
+        yield
+    finally:
+        project_settings_loading = False
+
+
 def handle_project_update(_=None, _2=None):
     """Handles changing projects, which may cause extensions to be disabled/enabled.
 
@@ -24,9 +36,7 @@ def handle_project_update(_=None, _2=None):
 
     from .blender import preferences, project_extensions
 
-    global project_settings_loading
-    project_settings_loading = True
-    try:
+    with mark_as_loading():
         prefs = preferences()
         project_id = prefs.project.project
         log.info('Updating internal state to reflect extensions enabled on current project %s.',
@@ -75,8 +85,6 @@ def handle_project_update(_=None, _2=None):
                     prefs.flamenco_job_file_path = mps['file_path']
                     prefs.flamenco_job_output_path = mps['output_path']
                     prefs.flamenco_job_output_strip_components = mps['output_strip_components']
-    finally:
-        project_settings_loading = False
 
 
 def store(_=None, _2=None):
