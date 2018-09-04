@@ -814,19 +814,19 @@ def flamenco_do_override_output_path_updated(scene, context):
     log.info('Setting Override Output Path to %s', scene.flamenco_override_output_path)
 
 
+# FlamencoManagerGroup needs to be registered before classes that use it.
+_rna_classes = [FlamencoManagerGroup]
+_rna_classes.extend(
+    cls for cls in locals()
+    if isinstance(cls, type) and hasattr(cls, 'bl_rna') and cls not in _rna_classes
+)
+
+
 def register():
     from ..utils import redraw
 
-    bpy.utils.register_class(FlamencoManagerGroup)
-    bpy.utils.register_class(FLAMENCO_OT_fmanagers)
-    bpy.utils.register_class(FLAMENCO_OT_render)
-    bpy.utils.register_class(FLAMENCO_OT_scene_to_frame_range)
-    bpy.utils.register_class(FLAMENCO_OT_copy_files)
-    bpy.utils.register_class(FLAMENCO_OT_explore_file_path)
-    bpy.utils.register_class(FLAMENCO_OT_enable_output_path_override)
-    bpy.utils.register_class(FLAMENCO_OT_disable_output_path_override)
-    bpy.utils.register_class(FLAMENCO_OT_abort)
-    bpy.utils.register_class(FLAMENCO_PT_render)
+    for cls in _rna_classes:
+        bpy.utils.register_class(cls)
 
     scene = bpy.types.Scene
     scene.flamenco_render_fchunk_size = IntProperty(
@@ -917,7 +917,11 @@ def register():
 
 def unregister():
     deactivate()
-    bpy.utils.unregister_module(__name__)
+    for cls in _rna_classes:
+        try:
+            bpy.utils.unregister_class(cls)
+        except RuntimeError:
+            log.warning('Unable to unregister class %r, probably already unregistered', cls)
 
     for name in ('flamenco_render_fchunk_size',
                  'flamenco_render_schunk_count',

@@ -323,20 +323,25 @@ def window_menu(self, context):
     props.screenshot_full = True
 
 
-def register():
-    bpy.utils.register_class(PILLAR_OT_image_share)
-
-    bpy.types.IMAGE_MT_image.append(image_editor_menu)
+def get_topbar_menu():
+    """Return the topbar menu in a Blender 2.79 and 2.80 compatible way."""
     try:
         menu = bpy.types.TOPBAR_MT_window
     except AttributeError:
         # Blender < 2.80
         menu = bpy.types.INFO_MT_window
-    menu.append(window_menu)
+    return menu
+
+
+def register():
+    bpy.utils.register_class(PILLAR_OT_image_share)
+
+    bpy.types.IMAGE_MT_image.append(image_editor_menu)
+    get_topbar_menu().append(window_menu)
 
 
 def unregister():
     bpy.utils.unregister_class(PILLAR_OT_image_share)
 
     bpy.types.IMAGE_MT_image.remove(image_editor_menu)
-    bpy.types.INFO_MT_window.remove(window_menu)
+    get_topbar_menu().remove(window_menu)

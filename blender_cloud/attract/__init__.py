@@ -955,6 +955,9 @@ def deactivate():
             pass
 
 
+_rna_classes = [cls for cls in locals() if isinstance(cls, type) and hasattr(cls, 'bl_rna')]
+
+
 def register():
     bpy.types.Sequence.atc_is_synced = bpy.props.BoolProperty(name="Is Synced")
     bpy.types.Sequence.atc_object_id = bpy.props.StringProperty(name="Attract Object ID")
@@ -980,22 +983,18 @@ def register():
 
     bpy.types.SEQUENCER_PT_edit.append(draw_strip_movie_meta)
 
-    bpy.utils.register_class(AttractToolsPanel)
-    bpy.utils.register_class(AttractShotRelink)
-    bpy.utils.register_class(AttractShotDelete)
-    bpy.utils.register_class(AttractStripUnlink)
-    bpy.utils.register_class(AttractShotFetchUpdate)
-    bpy.utils.register_class(AttractShotSubmitSelected)
-    bpy.utils.register_class(ATTRACT_OT_submit_all)
-    bpy.utils.register_class(ATTRACT_OT_open_meta_blendfile)
-    bpy.utils.register_class(ATTRACT_OT_shot_open_in_browser)
-    bpy.utils.register_class(ATTRACT_OT_make_shot_thumbnail)
-    bpy.utils.register_class(ATTRACT_OT_copy_id_to_clipboard)
+    for cls in _rna_classes:
+        bpy.utils.register_class(cls)
 
 
 def unregister():
     deactivate()
-    bpy.utils.unregister_module(__name__)
+    for cls in _rna_classes:
+        try:
+            bpy.utils.unregister_class(cls)
+        except RuntimeError:
+            log.warning('Unable to unregister class %r, probably already unregistered', cls)
+
     del bpy.types.Sequence.atc_is_synced
     del bpy.types.Sequence.atc_object_id
     del bpy.types.Sequence.atc_object_id_conflict
