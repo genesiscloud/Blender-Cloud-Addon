@@ -680,8 +680,8 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
 
         prefs = preferences()
 
-        labeled_row = layout.split(0.25, align=True)
-        labeled_row.label('Manager:')
+        labeled_row = layout.split(**blender.factor(0.25), align=True)
+        labeled_row.label(text='Manager:')
         prop_btn_row = labeled_row.row(align=True)
 
         bcp = prefs.flamenco_manager
@@ -696,7 +696,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
                                       text='',
                                       icon='FILE_REFRESH')
         else:
-            prop_btn_row.label('Fetching available managers.')
+            prop_btn_row.label(text='Fetching available managers.')
 
         labeled_row = layout.split(**blender.factor(0.25), align=True)
         labeled_row.label(text='Job Type:')
