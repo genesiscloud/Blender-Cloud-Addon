@@ -71,7 +71,7 @@ class FlamencoManagerGroup(PropertyGroup):
         items=available_managers,
         name='Flamenco Manager',
         description='Which Flamenco Manager to use for jobs',
-        update=project_specific.updated_manager,
+        update=project_specific.store,
     )
 
     status = EnumProperty(
@@ -92,7 +92,7 @@ class FlamencoManagerGroup(PropertyGroup):
     @available_managers.setter
     def available_managers(self, new_managers):
         self['available_managers'] = new_managers
-        project_specific.updated_manager()
+        project_specific.store()
 
 
 class FlamencoPollMixin:
