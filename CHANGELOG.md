@@ -7,6 +7,7 @@
 - Support colour strips as Attract shots.
 - Blender 2.8 support (work in progress).
 - Flamenco: allow jobs to be created in 'paused' state.
+- Flamenco: only show Flamenco Managers that are linked to the currently selected project.
 
 
 ## Version 1.8 (2018-01-03)
