@@ -153,7 +153,7 @@ class AsyncLoopModalOperator(bpy.types.Operator):
         _loop_kicking_operator_running = True
 
         wm = context.window_manager
-        self.timer = wm.event_timer_add(0.00001, context.window)
+        self.timer = wm.event_timer_add(0.00001, window=context.window)
 
         return {'RUNNING_MODAL'}
 
@@ -192,7 +192,7 @@ class AsyncModalOperatorMixin:
 
     def invoke(self, context, event):
         context.window_manager.modal_handler_add(self)
-        self.timer = context.window_manager.event_timer_add(1 / 15, context.window)
+        self.timer = context.window_manager.event_timer_add(1 / 15, window=context.window)
 
         self.log.info('Starting')
         self._new_async_task(self.async_execute(context))

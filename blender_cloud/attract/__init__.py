@@ -46,9 +46,10 @@ if "bpy" in locals():
     draw = importlib.reload(draw)
     pillar = importlib.reload(pillar)
     async_loop = importlib.reload(async_loop)
+    blender = importlib.reload(blender)
 else:
     from . import draw
-    from .. import pillar, async_loop
+    from .. import pillar, async_loop, blender
 
 import bpy
 import pillarsdk
@@ -198,7 +199,7 @@ class AttractToolsPanel(AttractPollMixin, Panel):
             if strip.atc_object_id_conflict:
                 warnbox = layout.box()
                 warnbox.alert = True
-                warnbox.label('Warning: This shot is linked to multiple sequencer strips.',
+                warnbox.label(text='Warning: This shot is linked to multiple sequencer strips.',
                               icon='ERROR')
 
             layout.prop(strip, 'atc_name', text='Name')
@@ -230,7 +231,7 @@ class AttractToolsPanel(AttractPollMixin, Panel):
                              icon='RENDER_STILL')
 
                 # Group more dangerous operations.
-                dangerous_sub = layout.split(0.6, align=True)
+                dangerous_sub = layout.split(**blender.factor(0.6), align=True)
                 dangerous_sub.operator('attract.strip_unlink',
                                        text='Unlink %s' % noun,
                                        icon='PANEL_CLOSE')
@@ -918,12 +919,12 @@ def draw_strip_movie_meta(self, context):
     row = box.row(align=True)
     fname = meta.get('BLEND_FILE', None) or None
     if fname:
-        row.label('Original Blendfile: %s' % fname)
+        row.label(text='Original Blendfile: %s' % fname)
         row.operator(ATTRACT_OT_open_meta_blendfile.bl_idname,
                      text='', icon='FILE_BLEND')
     sfra = meta.get('START_FRAME', '?')
     efra = meta.get('END_FRAME', '?')
-    box.label('Original Frame Range: %s-%s' % (sfra, efra))
+    box.label(text='Original Frame Range: %s-%s' % (sfra, efra))
 
 
 def activate():

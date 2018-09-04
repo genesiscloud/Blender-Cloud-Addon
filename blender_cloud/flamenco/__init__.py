@@ -33,10 +33,13 @@ if "bpy" in locals():
     try:
         bat_interface = importlib.reload(bat_interface)
         sdk = importlib.reload(sdk)
+        blender = importlib.reload(blender)
     except NameError:
         from . import bat_interface, sdk
+        from .. import blender
 else:
     from . import bat_interface, sdk
+    from .. import blender
 
 import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
@@ -695,12 +698,12 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         else:
             prop_btn_row.label('Fetching available managers.')
 
-        labeled_row = layout.split(0.25, align=True)
-        labeled_row.label('Job Type:')
+        labeled_row = layout.split(**blender.factor(0.25), align=True)
+        labeled_row.label(text='Job Type:')
         labeled_row.prop(context.scene, 'flamenco_render_job_type', text='')
 
-        labeled_row = layout.split(0.25, align=True)
-        labeled_row.label('Frame Range:')
+        labeled_row = layout.split(**blender.factor(0.25), align=True)
+        labeled_row.label(text='Frame Range:')
         prop_btn_row = labeled_row.row(align=True)
         prop_btn_row.prop(context.scene, 'flamenco_render_frame_range', text='')
         prop_btn_row.operator('flamenco.scene_to_frame_range', text='', icon='ARROW_LEFTRIGHT')
@@ -714,21 +717,21 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
 
         paths_layout = layout.column(align=True)
 
-        labeled_row = paths_layout.split(0.25, align=True)
-        labeled_row.label('Storage:')
+        labeled_row = paths_layout.split(**blender.factor(0.25), align=True)
+        labeled_row.label(text='Storage:')
         prop_btn_row = labeled_row.row(align=True)
-        prop_btn_row.label(prefs.flamenco_job_file_path)
+        prop_btn_row.label(text=prefs.flamenco_job_file_path)
         props = prop_btn_row.operator(FLAMENCO_OT_explore_file_path.bl_idname,
                                       text='', icon='DISK_DRIVE')
         props.path = prefs.flamenco_job_file_path
 
         render_output = render_output_path(context)
         if render_output is None:
-            paths_layout.label('Unable to render with Flamenco, outside of project directory.')
+            paths_layout.label(text='Unable to render with Flamenco, outside of project directory.')
             return
 
-        labeled_row = paths_layout.split(0.25, align=True)
-        labeled_row.label('Output:')
+        labeled_row = paths_layout.split(**blender.factor(0.25), align=True)
+        labeled_row.label(text='Output:')
         prop_btn_row = labeled_row.row(align=True)
 
         if context.scene.flamenco_do_override_output_path:
@@ -736,7 +739,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
             op = FLAMENCO_OT_disable_output_path_override.bl_idname
             icon = 'X'
         else:
-            prop_btn_row.label(str(render_output))
+            prop_btn_row.label(text=str(render_output))
             op = FLAMENCO_OT_enable_output_path_override.bl_idname
             icon = 'GREASEPENCIL'
         prop_btn_row.operator(op, icon=icon, text='')
@@ -746,9 +749,9 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         props.path = str(render_output.parent)
 
         if context.scene.flamenco_do_override_output_path:
-            labeled_row = paths_layout.split(0.25, align=True)
-            labeled_row.label('Effective Output Path:')
-            labeled_row.label(str(render_output))
+            labeled_row = paths_layout.split(**blender.factor(0.25), align=True)
+            labeled_row.label(text='Effective Output Path:')
+            labeled_row.label(text=str(render_output))
 
         # Show current status of Flamenco.
         flamenco_status = context.window_manager.flamenco_status
@@ -760,13 +763,13 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
                 layout.operator(FLAMENCO_OT_copy_files.bl_idname)
         elif flamenco_status == 'INVESTIGATING':
             row = layout.row(align=True)
-            row.label('Investigating your files')
+            row.label(text='Investigating your files')
             row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
         elif flamenco_status == 'COMMUNICATING':
-            layout.label('Communicating with Flamenco Server')
+            layout.label(text='Communicating with Flamenco Server')
         elif flamenco_status == 'ABORTING':
             row = layout.row(align=True)
-            row.label('Aborting, please wait.')
+            row.label(text='Aborting, please wait.')
             row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
         if flamenco_status == 'TRANSFERRING':
             row = layout.row(align=True)
@@ -774,7 +777,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
                      text=context.window_manager.flamenco_status_txt)
             row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
         elif flamenco_status != 'IDLE' and context.window_manager.flamenco_status_txt:
-            layout.label(context.window_manager.flamenco_status_txt)
+            layout.label(text=context.window_manager.flamenco_status_txt)
 
 
 def activate():

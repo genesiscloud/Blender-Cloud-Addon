@@ -1013,8 +1013,8 @@ def _hdri_download_panel(self, current_image):
                     current_image.name)
         return
 
-    row = self.layout.row(align=True).split(0.3)
-    row.label('HDRi', icon_value=blender.icon('CLOUD'))
+    row = self.layout.row(align=True).split(**blender.factor(0.3))
+    row.label(text='HDRi', icon_value=blender.icon('CLOUD'))
     row.prop(current_image, 'hdri_variation', text='')
 
     if current_image.hdri_variation != current_variation:

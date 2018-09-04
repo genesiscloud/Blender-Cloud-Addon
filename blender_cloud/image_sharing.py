@@ -327,7 +327,12 @@ def register():
     bpy.utils.register_class(PILLAR_OT_image_share)
 
     bpy.types.IMAGE_MT_image.append(image_editor_menu)
-    bpy.types.INFO_MT_window.append(window_menu)
+    try:
+        menu = bpy.types.TOPBAR_MT_window
+    except AttributeError:
+        # Blender < 2.80
+        menu = bpy.types.INFO_MT_window
+    menu.append(window_menu)
 
 
 def unregister():

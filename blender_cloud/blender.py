@@ -41,6 +41,18 @@ log = logging.getLogger(__name__)
 icons = None
 
 
+@functools.lru_cache()
+def factor(factor: float) -> dict:
+    """Construct keyword argument for UILayout.split().
+
+    On Blender 2.8 this returns {'factor': factor}, and on earlier Blenders it returns
+    {'percentage': factor}.
+    """
+    if bpy.app.version < (2, 80, 0):
+        return {'percentage': factor}
+    return {'factor': factor}
+
+
 @pyside_cache('version')
 def blender_syncable_versions(self, context):
     """Returns the list of items used by SyncStatusProperties.version EnumProperty."""
@@ -298,8 +310,8 @@ class BlenderCloudPreferences(AddonPreferences):
         bss = context.window_manager.blender_sync_status
         bsync_box = layout.box()
         bsync_box.enabled = msg_icon != 'ERROR'
-        row = bsync_box.row().split(percentage=0.33)
-        row.label('Blender Sync with Blender Cloud', icon_value=icon('CLOUD'))
+        row = bsync_box.row().split(**factor(0.33))
+        row.label(text='Blender Sync with Blender Cloud', icon_value=icon('CLOUD'))
 
         icon_for_level = {
             'INFO': 'NONE',
@@ -309,7 +321,7 @@ class BlenderCloudPreferences(AddonPreferences):
         }
         msg_icon = icon_for_level[bss.level] if bss.message else 'NONE'
         message_container = row.row()
-        message_container.label(bss.message, icon=msg_icon)
+        message_container.label(text=bss.message, icon=msg_icon)
 
         sub = bsync_box.column()
 
@@ -319,7 +331,7 @@ class BlenderCloudPreferences(AddonPreferences):
 
         # Image Share stuff
         share_box = layout.box()
-        share_box.label('Image Sharing on Blender Cloud', icon_value=icon('CLOUD'))
+        share_box.label(text='Image Sharing on Blender Cloud', icon_value=icon('CLOUD'))
         share_box.prop(self, 'open_browser_after_share')
 
         # Project selector
@@ -341,7 +353,7 @@ class BlenderCloudPreferences(AddonPreferences):
         layout.enabled = bss.status in {'NONE', 'IDLE'}
 
         buttons = layout.column()
-        row_buttons = buttons.row().split(percentage=0.5)
+        row_buttons = buttons.row().split(**factor(0.5))
         row_push = row_buttons.row()
         row_pull = row_buttons.row(align=True)
 
@@ -366,11 +378,11 @@ class BlenderCloudPreferences(AddonPreferences):
                                   text='',
                                   icon='DOTSDOWN').action = 'SELECT'
         else:
-            row_pull.label('Cloud Sync is running.')
+            row_pull.label(text='Cloud Sync is running.')
 
     def draw_project_selector(self, project_box, bcp: BlenderCloudProjectGroup):
         project_row = project_box.row(align=True)
-        project_row.label('Project settings', icon_value=icon('CLOUD'))
+        project_row.label(text='Project settings', icon_value=icon('CLOUD'))
 
         row_buttons = project_row.row(align=True)
 
@@ -391,31 +403,29 @@ class BlenderCloudPreferences(AddonPreferences):
                                              icon='WORLD')
                 props.project_id = project
         else:
-            row_buttons.label('Fetching available projects.')
+            row_buttons.label(text='Fetching available projects.')
 
         enabled_for = project_extensions(project)
         if not project:
             return
 
         if not enabled_for:
-            project_box.label('This project is not set up for Attract or Flamenco')
+            project_box.label(text='This project is not set up for Attract or Flamenco')
             return
 
-        project_box.label('This project is set up for: %s' %
-                          ', '.join(sorted(enabled_for)))
+        project_box.label(text='This project is set up for: %s' %
+                               ', '.join(sorted(enabled_for)))
 
         # This is only needed when the project is set up for either Attract or Flamenco.
         project_box.prop(self, 'cloud_project_local_path',
                          text='Local Project Path')
 
     def draw_flamenco_buttons(self, flamenco_box, bcp: flamenco.FlamencoManagerGroup, context):
-        from .flamenco import bat_interface
-
         header_row = flamenco_box.row(align=True)
-        header_row.label('Flamenco:', icon_value=icon('CLOUD'))
+        header_row.label(text='Flamenco:', icon_value=icon('CLOUD'))
 
-        manager_split = flamenco_box.split(0.32, align=True)
-        manager_split.label('Manager:')
+        manager_split = flamenco_box.split(**factor(0.32), align=True)
+        manager_split.label(text='Manager:')
         manager_box = manager_split.row(align=True)
 
         if bcp.status in {'NONE', 'IDLE'}:
@@ -429,9 +439,9 @@ class BlenderCloudPreferences(AddonPreferences):
                                      text='',
                                      icon='FILE_REFRESH')
         else:
-            manager_box.label('Fetching available managers.')
+            manager_box.label(text='Fetching available managers.')
 
-        path_split = flamenco_box.split(0.32, align=True)
+        path_split = flamenco_box.split(**factor(0.32), align=True)
         path_split.label(text='Job File Path:')
         path_box = path_split.row(align=True)
         path_box.prop(self, 'flamenco_job_file_path', text='')
@@ -439,7 +449,7 @@ class BlenderCloudPreferences(AddonPreferences):
         props.path = self.flamenco_job_file_path
 
         job_output_box = flamenco_box.column(align=True)
-        path_split = job_output_box.split(0.32, align=True)
+        path_split = job_output_box.split(**factor(0.32), align=True)
         path_split.label(text='Job Output Path:')
         path_box = path_split.row(align=True)
         path_box.prop(self, 'flamenco_job_output_path', text='')
@@ -447,8 +457,8 @@ class BlenderCloudPreferences(AddonPreferences):
         props.path = self.flamenco_job_output_path
         job_output_box.prop(self, 'flamenco_exclude_filter')
 
-        prop_split = job_output_box.split(0.32, align=True)
-        prop_split.label('Strip Components:')
+        prop_split = job_output_box.split(**factor(0.32), align=True)
+        prop_split.label(text='Strip Components:')
         prop_split.prop(self, 'flamenco_job_output_strip_components', text='')
 
         from .flamenco import render_output_path
@@ -456,12 +466,12 @@ class BlenderCloudPreferences(AddonPreferences):
         path_box = job_output_box.row(align=True)
         output_path = render_output_path(context)
         if output_path:
-            path_box.label(str(output_path))
+            path_box.label(text=str(output_path))
             props = path_box.operator('flamenco.explore_file_path', text='', icon='DISK_DRIVE')
             props.path = str(output_path.parent)
         else:
-            path_box.label('Blend file is not in your project path, '
-                           'unable to give output path example.')
+            path_box.label(text='Blend file is not in your project path, '
+                                'unable to give output path example.')
 
         flamenco_box.prop(self, 'flamenco_open_browser_after_submit')
 
