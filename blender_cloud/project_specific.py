@@ -63,15 +63,18 @@ def handle_project_update(_=None, _2=None):
             log.debug('setting flamenco manager to %s', manager_id)
             try:
                 prefs.flamenco_manager.manager = manager_id
-                if 'flamenco_managers_settings' in ps and \
-                        prefs.flamenco_manager.manager in ps['flamenco_managers_settings']:
-                    mps = ps['flamenco_managers_settings'][prefs.flamenco_manager.manager]
-                    setattr(prefs, 'flamenco_job_file_path', mps['file_path'])
-                    setattr(prefs, 'flamenco_job_output_path', mps['output_path'])
-                    setattr(prefs, 'flamenco_job_output_strip_components', mps['output_strip_components'])
             except TypeError:
                 log.warning('manager %s for this project could not be found', manager_id)
-
+            else:
+                try:
+                    mps = ps['flamenco_managers_settings'][prefs.flamenco_manager.manager]
+                except KeyError:
+                    # No settings for this manager, so nothing to do.
+                    pass
+                else:
+                    prefs.flamenco_job_file_path = mps['file_path']
+                    prefs.flamenco_job_output_path = mps['output_path']
+                    prefs.flamenco_job_output_strip_components = mps['output_strip_components']
     finally:
         project_settings_loading = False
 
