@@ -1,11 +1,11 @@
 # Blender Cloud changelog
 
-## Version 2.0 (in development)
+## Version 1.9 (2018-09-05)
 
+- Last version to support Blender versions before 2.80!
 - Replace BAM with BAT🦇.
 - Don't crash the texture browser when an invalid texture is seen.
 - Support colour strips as Attract shots.
-- Blender 2.8 support (work in progress).
 - Flamenco: allow jobs to be created in 'paused' state.
 - Flamenco: only show Flamenco Managers that are linked to the currently selected project.
 
