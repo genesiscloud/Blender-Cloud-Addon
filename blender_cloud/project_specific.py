@@ -133,3 +133,10 @@ def store(_=None, _2=None):
     all_settings[project_id] = ps
     prefs['project_settings'] = all_settings
 
+    if log.isEnabledFor(logging.DEBUG):
+        from pprint import pformat
+        if hasattr(all_settings, 'to_dict'):
+            to_log = all_settings.to_dict()
+        else:
+            to_log = all_settings
+        log.debug('Saving project-specific settings:\n%s', pformat(to_log))
