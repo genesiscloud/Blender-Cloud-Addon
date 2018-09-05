@@ -228,7 +228,7 @@ setup(
               'wheels': BuildWheels},
     name='blender_cloud',
     description='The Blender Cloud addon allows browsing the Blender Cloud from Blender.',
-    version='1.9',
+    version='1.9.0',
     author='Sybren A. Stüvel',
     author_email='sybren@stuvel.eu',
     packages=find_packages('.'),
