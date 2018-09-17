@@ -90,9 +90,8 @@ def handle_project_update(_=None, _2=None):
                     prefs.flamenco_job_file_path = pppm['file_path']
                     prefs.flamenco_job_output_path = pppm['output_path']
                     prefs.flamenco_job_output_strip_components = pppm['output_strip_components']
-        else:
-            log.debug('Resetting Flamenco Manager to None')
-            prefs.flamenco_manager.manager = None
+        elif prefs.flamenco_manager.available_managers:
+            prefs.flamenco_manager.manager = prefs.flamenco_manager.available_managers[0]
 
 
 def store(_=None, _2=None):
