@@ -1,5 +1,10 @@
 # Blender Cloud changelog
 
+## Version 1.9.1 (2018-09-17)
+
+- Fix issue with Python 3.7, which is used by current daily builds of Blender.
+
+
 ## Version 1.9 (2018-09-05)
 
 - Last version to support Blender versions before 2.80!
