@@ -178,6 +178,7 @@ class ATTRACT_PT_tools(AttractPollMixin, Panel):
     bl_label = 'Attract'
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
+    bl_category = 'Strip'
 
     def draw_header(self, context):
         strip = active_strip(context)
