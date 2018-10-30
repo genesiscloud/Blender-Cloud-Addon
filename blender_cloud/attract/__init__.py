@@ -189,56 +189,8 @@ class ATTRACT_PT_tools(AttractPollMixin, Panel):
         layout = self.layout
         strip_types = {'MOVIE', 'IMAGE', 'META', 'COLOR'}
 
-        selshots = list(selected_shots(context))
         if strip and strip.type in strip_types and strip.atc_object_id:
-            if len(selshots) > 1:
-                noun = '%i Shots' % len(selshots)
-            else:
-                noun = 'This Shot'
-
-            if strip.atc_object_id_conflict:
-                warnbox = layout.box()
-                warnbox.alert = True
-                warnbox.label(text='Warning: This shot is linked to multiple sequencer strips.',
-                              icon='ERROR')
-
-            layout.prop(strip, 'atc_name', text='Name')
-            layout.prop(strip, 'atc_status', text='Status')
-
-            # Create a special sub-layout for read-only properties.
-            ro_sub = layout.column(align=True)
-            ro_sub.enabled = False
-            ro_sub.prop(strip, 'atc_description', text='Description')
-            ro_sub.prop(strip, 'atc_notes', text='Notes')
-
-            if strip.atc_is_synced:
-                sub = layout.column(align=True)
-                row = sub.row(align=True)
-                if bpy.ops.attract.submit_selected.poll():
-                    row.operator('attract.submit_selected',
-                                 text='Submit %s' % noun,
-                                 icon='TRIA_UP')
-                else:
-                    row.operator(ATTRACT_OT_submit_all.bl_idname)
-                row.operator(ATTRACT_OT_shot_fetch_update.bl_idname,
-                             text='', icon='FILE_REFRESH')
-                row.operator(ATTRACT_OT_shot_open_in_browser.bl_idname,
-                             text='', icon='WORLD')
-                row.operator(ATTRACT_OT_copy_id_to_clipboard.bl_idname,
-                             text='', icon='COPYDOWN')
-                sub.operator(ATTRACT_OT_make_shot_thumbnail.bl_idname,
-                             text='Render Thumbnail for %s' % noun,
-                             icon='RENDER_STILL')
-
-                # Group more dangerous operations.
-                dangerous_sub = layout.split(**blender.factor(0.6), align=True)
-                dangerous_sub.operator('attract.strip_unlink',
-                                       text='Unlink %s' % noun,
-                                       icon='PANEL_CLOSE')
-                dangerous_sub.operator(ATTRACT_OT_shot_delete.bl_idname,
-                                       text='Delete %s' % noun,
-                                       icon='CANCEL')
-
+            self._draw_attractstrip_buttons(context, strip)
         elif context.selected_sequences:
             if len(context.selected_sequences) > 1:
                 noun = 'Selected Strips'
@@ -249,6 +201,56 @@ class ATTRACT_PT_tools(AttractPollMixin, Panel):
             layout.operator('attract.shot_relink')
         else:
             layout.operator(ATTRACT_OT_submit_all.bl_idname)
+
+    def _draw_attractstrip_buttons(self, context, strip):
+        """Draw buttons when selected strips are Attract shots."""
+
+        layout = self.layout
+        selshots = list(selected_shots(context))
+
+        if len(selshots) > 1:
+            noun = '%i Shots' % len(selshots)
+        else:
+            noun = 'This Shot'
+        if strip.atc_object_id_conflict:
+            warnbox = layout.box()
+            warnbox.alert = True
+            warnbox.label(text='Warning: This shot is linked to multiple sequencer strips.',
+                          icon='ERROR')
+        layout.prop(strip, 'atc_name', text='Name')
+        layout.prop(strip, 'atc_status', text='Status')
+        # Create a special sub-layout for read-only properties.
+        ro_sub = layout.column(align=True)
+        ro_sub.enabled = False
+        ro_sub.prop(strip, 'atc_description', text='Description')
+        ro_sub.prop(strip, 'atc_notes', text='Notes')
+        if strip.atc_is_synced:
+            sub = layout.column(align=True)
+            row = sub.row(align=True)
+            if bpy.ops.attract.submit_selected.poll():
+                row.operator('attract.submit_selected',
+                             text='Submit %s' % noun,
+                             icon='TRIA_UP')
+            else:
+                row.operator(ATTRACT_OT_submit_all.bl_idname)
+            row.operator(ATTRACT_OT_shot_fetch_update.bl_idname,
+                         text='', icon='FILE_REFRESH')
+            row.operator(ATTRACT_OT_shot_open_in_browser.bl_idname,
+                         text='', icon='WORLD')
+            row.operator(ATTRACT_OT_copy_id_to_clipboard.bl_idname,
+                         text='', icon='COPYDOWN')
+            sub.operator(ATTRACT_OT_make_shot_thumbnail.bl_idname,
+                         text='Render Thumbnail for %s' % noun,
+                         icon='RENDER_STILL')
+
+            # Group more dangerous operations.
+            dangerous_sub = layout.split(**blender.factor(0.6), align=True)
+            dangerous_sub.operator('attract.strip_unlink',
+                                   text='Unlink %s' % noun,
+                                   icon='PANEL_CLOSE')
+            dangerous_sub.operator(ATTRACT_OT_shot_delete.bl_idname,
+                                   text='Delete %s' % noun,
+                                   icon='CANCEL')
 
 
 class AttractOperatorMixin(AttractPollMixin):
@@ -957,6 +959,7 @@ def deactivate():
 
 _rna_classes = [cls for cls in locals().values()
                 if isinstance(cls, type) and cls.__name__.startswith('ATTRACT')]
+log.info('RNA classes:\n%s', '\n'.join([repr(cls) for cls in _rna_classes]))
 
 
 def register():
