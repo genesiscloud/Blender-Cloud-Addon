@@ -1,5 +1,10 @@
 # Blender Cloud changelog
 
+## Version 1.9.3 (2018-10-30)
+
+- Fix drawing of Attract strips in the VSE on Blender 2.8.
+
+
 ## Version 1.9.2 (2018-09-17)
 
 - No changes, just a different filename to force a refresh on our
