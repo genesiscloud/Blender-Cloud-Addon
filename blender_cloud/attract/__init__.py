@@ -202,6 +202,7 @@ class ATTRACT_PT_tools(AttractPollMixin, Panel):
             layout.operator('attract.shot_relink')
         else:
             layout.operator(ATTRACT_OT_submit_all.bl_idname)
+        layout.operator(ATTRACT_OT_project_open_in_browser.bl_idname, icon='WORLD')
 
     def _draw_attractstrip_buttons(self, context, strip):
         """Draw buttons when selected strips are Attract shots."""
@@ -905,6 +906,37 @@ class ATTRACT_OT_copy_id_to_clipboard(AttractOperatorMixin, Operator):
 
         context.window_manager.clipboard = strip.atc_object_id
         self.report({'INFO'}, 'Shot ID %s copied to clipboard' % strip.atc_object_id)
+
+        return {'FINISHED'}
+
+
+class ATTRACT_OT_project_open_in_browser(Operator):
+    bl_idname = 'attract.project_open_in_browser'
+    bl_label = 'Open Project in Browser'
+    bl_description = 'Opens a webbrowser to show the project in Attract'
+
+    project_id = bpy.props.StringProperty(name='Project ID', default='')
+
+    def execute(self, context):
+        import webbrowser
+        import urllib.parse
+
+        import pillarsdk
+        from ..pillar import sync_call
+        from ..blender import PILLAR_WEB_SERVER_URL, preferences
+
+        if not self.project_id:
+            self.project_id = preferences().project.project
+
+        project = sync_call(pillarsdk.Project.find, self.project_id, {'projection': {'url': True}})
+
+        if log.isEnabledFor(logging.DEBUG):
+            import pprint
+            log.debug('found project: %s', pprint.pformat(project.to_dict()))
+
+        url = urllib.parse.urljoin(PILLAR_WEB_SERVER_URL, f'attract/{project.url}')
+        webbrowser.open_new_tab(url)
+        self.report({'INFO'}, 'Opened a browser at %s' % url)
 
         return {'FINISHED'}
 
