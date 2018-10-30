@@ -1,5 +1,11 @@
 # Blender Cloud changelog
 
+## Version 1.9.2 (2018-09-17)
+
+- No changes, just a different filename to force a refresh on our
+  hosting platform.
+
+
 ## Version 1.9.1 (2018-09-17)
 
 - Fix issue with Python 3.7, which is used by current daily builds of Blender.
