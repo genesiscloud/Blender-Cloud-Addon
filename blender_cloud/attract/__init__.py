@@ -174,7 +174,7 @@ class AttractPollMixin:
         return attract_is_active
 
 
-class AttractToolsPanel(AttractPollMixin, Panel):
+class ATTRACT_PT_tools(AttractPollMixin, Panel):
     bl_label = 'Attract'
     bl_space_type = 'SEQUENCE_EDITOR'
     bl_region_type = 'UI'
@@ -220,7 +220,7 @@ class AttractToolsPanel(AttractPollMixin, Panel):
                                  icon='TRIA_UP')
                 else:
                     row.operator(ATTRACT_OT_submit_all.bl_idname)
-                row.operator(AttractShotFetchUpdate.bl_idname,
+                row.operator(ATTRACT_OT_shot_fetch_update.bl_idname,
                              text='', icon='FILE_REFRESH')
                 row.operator(ATTRACT_OT_shot_open_in_browser.bl_idname,
                              text='', icon='WORLD')
@@ -235,7 +235,7 @@ class AttractToolsPanel(AttractPollMixin, Panel):
                 dangerous_sub.operator('attract.strip_unlink',
                                        text='Unlink %s' % noun,
                                        icon='PANEL_CLOSE')
-                dangerous_sub.operator(AttractShotDelete.bl_idname,
+                dangerous_sub.operator(ATTRACT_OT_shot_delete.bl_idname,
                                        text='Delete %s' % noun,
                                        icon='CANCEL')
 
@@ -244,7 +244,7 @@ class AttractToolsPanel(AttractPollMixin, Panel):
                 noun = 'Selected Strips'
             else:
                 noun = 'This Strip'
-            layout.operator(AttractShotSubmitSelected.bl_idname,
+            layout.operator(ATTRACT_OT_submit_selected.bl_idname,
                             text='Submit %s as New Shot' % noun)
             layout.operator('attract.shot_relink')
         else:
@@ -379,7 +379,7 @@ class AttractOperatorMixin(AttractPollMixin):
         draw.tag_redraw_all_sequencer_editors()
 
 
-class AttractShotFetchUpdate(AttractOperatorMixin, Operator):
+class ATTRACT_OT_shot_fetch_update(AttractOperatorMixin, Operator):
     bl_idname = "attract.shot_fetch_update"
     bl_label = "Fetch Update From Attract"
     bl_description = 'Update status, description & notes from Attract'
@@ -398,7 +398,7 @@ class AttractShotFetchUpdate(AttractOperatorMixin, Operator):
         return {'FINISHED'}
 
 
-class AttractShotRelink(AttractShotFetchUpdate):
+class ATTRACT_OT_shot_relink(AttractOperatorMixin, Operator):
     bl_idname = "attract.shot_relink"
     bl_label = "Relink With Attract"
 
@@ -467,7 +467,7 @@ class ATTRACT_OT_shot_open_in_browser(AttractOperatorMixin, Operator):
         return {'FINISHED'}
 
 
-class AttractShotDelete(AttractOperatorMixin, Operator):
+class ATTRACT_OT_shot_delete(AttractOperatorMixin, Operator):
     bl_idname = 'attract.shot_delete'
     bl_label = 'Delete Shot'
     bl_description = 'Remove this shot from Attract'
@@ -522,7 +522,7 @@ class AttractShotDelete(AttractOperatorMixin, Operator):
         col.prop(self, 'confirm', text="I hereby confirm: delete %s from The Edit." % noun)
 
 
-class AttractStripUnlink(AttractOperatorMixin, Operator):
+class ATTRACT_OT_strip_unlink(AttractOperatorMixin, Operator):
     bl_idname = 'attract.strip_unlink'
     bl_label = 'Unlink Shot From This Strip'
     bl_description = 'Remove Attract props from the selected strip(s)'
@@ -566,7 +566,7 @@ class AttractStripUnlink(AttractOperatorMixin, Operator):
         return {'FINISHED'}
 
 
-class AttractShotSubmitSelected(AttractOperatorMixin, Operator):
+class ATTRACT_OT_submit_selected(AttractOperatorMixin, Operator):
     bl_idname = 'attract.submit_selected'
     bl_label = 'Submit All Selected'
     bl_description = 'Submits all selected strips to Attract'
@@ -955,7 +955,8 @@ def deactivate():
             pass
 
 
-_rna_classes = [cls for cls in locals() if isinstance(cls, type) and hasattr(cls, 'bl_rna')]
+_rna_classes = [cls for cls in locals().values()
+                if isinstance(cls, type) and cls.__name__.startswith('ATTRACT')]
 
 
 def register():
