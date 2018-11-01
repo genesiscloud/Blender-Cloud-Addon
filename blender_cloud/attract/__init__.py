@@ -934,7 +934,7 @@ class ATTRACT_OT_project_open_in_browser(Operator):
             import pprint
             log.debug('found project: %s', pprint.pformat(project.to_dict()))
 
-        url = urllib.parse.urljoin(PILLAR_WEB_SERVER_URL, f'attract/{project.url}')
+        url = urllib.parse.urljoin(PILLAR_WEB_SERVER_URL, 'attract/' + project.url)
         webbrowser.open_new_tab(url)
         self.report({'INFO'}, 'Opened a browser at %s' % url)
 

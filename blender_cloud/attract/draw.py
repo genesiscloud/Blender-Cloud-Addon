@@ -179,8 +179,8 @@ def draw_callback_px(line_drawer: AttractLineDrawer):
 
     strips = shown_strips(context)
 
-    coords: typing.List[Float2] = []
-    colors: typing.List[Float4] = []
+    coords = []  # type: typing.List[Float2]
+    colors = []  # type: typing.List[Float4]
 
     # Collect all the lines (vertex coords + vertex colours) to draw.
     for strip in strips:
