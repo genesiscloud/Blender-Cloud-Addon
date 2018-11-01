@@ -17,3 +17,6 @@ echo
 echo "Don't forget to commit and tag:"
 echo git commit -m \'Bumped version to $VERSION\' setup.py blender_cloud/__init__.py
 echo git tag -a version-$VERSION -m \'Tagged version $VERSION\'
+echo
+echo "To build a distribution ZIP:"
+echo python setup.py bdist
