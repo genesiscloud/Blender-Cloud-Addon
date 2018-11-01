@@ -48,7 +48,12 @@ if "bpy" in locals():
     async_loop = importlib.reload(async_loop)
     blender = importlib.reload(blender)
 else:
-    from . import draw
+    import bpy
+
+    if bpy.app.version < (2, 80):
+        from . import draw_27 as draw
+    else:
+        from . import draw
     from .. import pillar, async_loop, blender
 
 import bpy

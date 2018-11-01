@@ -1,5 +1,11 @@
 # Blender Cloud changelog
 
+
+## Version 1.9.4 (2018-11-01)
+
+- Fixed Python 3.6 and Blender 2.79b incompatibilities accidentally introduced in 1.9.3.
+
+
 ## Version 1.9.3 (2018-10-30)
 
 - Fix drawing of Attract strips in the VSE on Blender 2.8.
