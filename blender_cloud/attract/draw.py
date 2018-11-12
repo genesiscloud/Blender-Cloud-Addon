@@ -232,6 +232,10 @@ def callback_enable():
     if cb_handle:
         return
 
+    # Doing GPU stuff in the background crashes Blender, so let's not.
+    if bpy.app.background:
+        return
+
     line_drawer = AttractLineDrawer()
     cb_handle[:] = bpy.types.SpaceSequenceEditor.draw_handler_add(
         draw_callback_px, (line_drawer,), 'WINDOW', 'POST_VIEW'),
