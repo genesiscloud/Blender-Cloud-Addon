@@ -1,6 +1,11 @@
 # Blender Cloud changelog
 
 
+## Version 1.9.5 (in development)
+
+- Fix crashing Blender when running in background mode (e.g. without GUI).
+
+
 ## Version 1.9.4 (2018-11-01)
 
 - Fixed Python 3.6 and Blender 2.79b incompatibilities accidentally introduced in 1.9.3.
