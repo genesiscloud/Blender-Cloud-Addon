@@ -28,7 +28,7 @@ import zipfile
 from distutils import log
 from distutils.core import Command
 from distutils.command.bdist import bdist
-from distutils.command.install import install
+from distutils.command.install import install, INSTALL_SCHEMES
 from distutils.command.install_egg_info import install_egg_info
 from setuptools import setup, find_packages
 
@@ -165,6 +165,7 @@ class BlenderAddonBdist(bdist):
         super().initialize_options()
         self.formats = ['zip']
         self.plat_name = 'addon'  # use this instead of 'linux-x86_64' or similar.
+        INSTALL_SCHEMES['unix_local']['data'] = '$base'
 
     def run(self):
         self.run_command('wheels')
