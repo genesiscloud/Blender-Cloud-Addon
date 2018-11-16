@@ -84,9 +84,10 @@ def manager_updated(self: 'FlamencoManagerGroup', context):
         return
 
     with project_specific.mark_as_loading():
-        prefs.flamenco_job_file_path = pppm['file_path']
-        prefs.flamenco_job_output_path = pppm['output_path']
-        prefs.flamenco_job_output_strip_components = pppm['output_strip_components']
+        for name in project_specific.FLAMENCO_PER_PROJECT_PER_MANAGER:
+            if name not in pppm:
+                continue
+            setattr(prefs, name, pppm[name])
 
 
 class FlamencoManagerGroup(PropertyGroup):

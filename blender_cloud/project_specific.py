@@ -9,6 +9,15 @@ PROJECT_SPECIFIC_SIMPLE_PROPS = (
     'cloud_project_local_path',
 )
 
+# Names of BlenderCloudPreferences properties that are project-specific and
+# Flamenco Manager-specific, and simple enough to store in a dict.
+FLAMENCO_PER_PROJECT_PER_MANAGER = (
+    'flamenco_exclude_filter',
+    'flamenco_job_file_path',
+    'flamenco_job_output_path',
+    'flamenco_job_output_strip_components',
+)
+
 log = logging.getLogger(__name__)
 project_settings_loading = 0  # counter, if > 0 then we're loading stuff.
 
@@ -116,9 +125,8 @@ def store(_=None, _2=None):
     # Store per-project, per-manager settings for the current Manager.
     pppm = ps.get('flamenco_managers_settings', {})
     pppm[prefs.flamenco_manager.manager] = {
-        'file_path': prefs.flamenco_job_file_path,
-        'output_path': prefs.flamenco_job_output_path,
-        'output_strip_components': prefs.flamenco_job_output_strip_components}
+        name: getattr(prefs, name) for name in FLAMENCO_PER_PROJECT_PER_MANAGER
+    }
     ps['flamenco_managers_settings'] = pppm  # IDPropertyGroup has no setdefault() method.
 
     # Store this project's settings in the preferences.
