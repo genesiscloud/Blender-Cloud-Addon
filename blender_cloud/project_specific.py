@@ -10,18 +10,21 @@ PROJECT_SPECIFIC_SIMPLE_PROPS = (
 )
 
 log = logging.getLogger(__name__)
-project_settings_loading = False
+project_settings_loading = 0  # counter, if > 0 then we're loading stuff.
 
 
 @contextlib.contextmanager
 def mark_as_loading():
-    """Sets project_settings_loading=True while the context is active."""
+    """Sets project_settings_loading > 0 while the context is active.
+
+    A counter is used to allow for nested mark_as_loading() contexts.
+    """
     global project_settings_loading
-    project_settings_loading = True
+    project_settings_loading += 1
     try:
         yield
     finally:
-        project_settings_loading = False
+        project_settings_loading -= 1
 
 
 def handle_project_update(_=None, _2=None):
@@ -76,20 +79,10 @@ def handle_project_update(_=None, _2=None):
         if flamenco_manager_id:
             log.debug('setting flamenco manager to %s', flamenco_manager_id)
             try:
+                # This will trigger a load of Project+Manager-specfic settings.
                 prefs.flamenco_manager.manager = flamenco_manager_id
             except TypeError:
                 log.warning('manager %s for this project could not be found', flamenco_manager_id)
-            else:
-                # Load per-project, per-manager settings for the current Manager.
-                try:
-                    pppm = ps['flamenco_managers_settings'][flamenco_manager_id]
-                except KeyError:
-                    # No settings for this manager, so nothing to do.
-                    pass
-                else:
-                    prefs.flamenco_job_file_path = pppm['file_path']
-                    prefs.flamenco_job_output_path = pppm['output_path']
-                    prefs.flamenco_job_output_strip_components = pppm['output_strip_components']
         elif prefs.flamenco_manager.available_managers:
             prefs.flamenco_manager.manager = prefs.flamenco_manager.available_managers[0]
 

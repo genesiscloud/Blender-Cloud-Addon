@@ -66,12 +66,35 @@ def available_managers(self, context):
     return [(p['_id'], p['name'], '') for p in mngrs]
 
 
+def manager_updated(self: 'FlamencoManagerGroup', context):
+    from ..blender import preferences
+
+    flamenco_manager_id = self.manager
+    log.debug('manager updated to %r', flamenco_manager_id)
+
+    prefs = preferences()
+    project_id = prefs.project.project
+    ps = prefs.get('project_settings', {}).get(project_id, {})
+
+    # Load per-project, per-manager settings for the current Manager.
+    try:
+        pppm = ps['flamenco_managers_settings'][flamenco_manager_id]
+    except KeyError:
+        # No settings for this manager, so nothing to do.
+        return
+
+    with project_specific.mark_as_loading():
+        prefs.flamenco_job_file_path = pppm['file_path']
+        prefs.flamenco_job_output_path = pppm['output_path']
+        prefs.flamenco_job_output_strip_components = pppm['output_strip_components']
+
+
 class FlamencoManagerGroup(PropertyGroup):
     manager = EnumProperty(
         items=available_managers,
         name='Flamenco Manager',
         description='Which Flamenco Manager to use for jobs',
-        update=project_specific.store,
+        update=manager_updated,
     )
 
     status = EnumProperty(
