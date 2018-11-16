@@ -165,7 +165,14 @@ class BlenderAddonBdist(bdist):
         super().initialize_options()
         self.formats = ['zip']
         self.plat_name = 'addon'  # use this instead of 'linux-x86_64' or similar.
-        INSTALL_SCHEMES['unix_local']['data'] = '$base'
+        self.fix_local_prefix()
+
+    def fix_local_prefix(self):
+        """Place data files in blender_cloud instead of local/blender_cloud."""
+        for key in INSTALL_SCHEMES:
+            if 'data' not in INSTALL_SCHEMES[key]:
+                continue
+            INSTALL_SCHEMES[key]['data'] = '$base'
 
     def run(self):
         self.run_command('wheels')
