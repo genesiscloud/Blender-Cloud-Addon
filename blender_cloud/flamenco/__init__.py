@@ -53,6 +53,9 @@ log = logging.getLogger(__name__)
 # Global flag used to determine whether panels etc. can be drawn.
 flamenco_is_active = False
 
+# 'image' file formats that actually produce a video.
+VIDEO_FILE_FORMATS = {'FFMPEG', 'AVI_RAW', 'AVI_JPEG'}
+
 
 @pyside_cache('manager')
 def available_managers(self, context):
@@ -240,6 +243,9 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                     'filepath': manager.replace_path(outfile),
                     'frames': frame_range,
                     'render_output': manager.replace_path(render_output),
+
+                    # Used for FFmpeg combining output frames into a video.
+                    'fps': scene.render.fps / scene.render.fps_base,
                     }
 
         # Add extra settings specific to the job type
@@ -255,6 +261,28 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             settings['cycles_num_chunks'] = scene.flamenco_render_schunk_count
             settings['cycles_sample_count'] = samples
             settings['format'] = 'EXR'
+
+        # Let Flamenco Server know whether we'll output images or video.
+        output_format = settings.get('format') or scene.render.image_settings.file_format
+        if output_format in VIDEO_FILE_FORMATS:
+            # Currently we don't do any postprocessing for video, so we don't
+            # bother figuring out the final output filename.
+            settings['images_or_video'] = 'video'
+        else:
+            settings['images_or_video'] = 'images'
+            # The file extension is necessary to find the output files and
+            # render them to a video with ffmpeg.
+            settings['output_file_extension'] = scene.render.file_extension  # like '.png'
+
+            # Always pass the file format, even though it won't be
+            # necessary for the actual render command (the blend file
+            # already has the correct setting). It's used by other
+            # commands, such as FFmpeg combining output frames into
+            # a video.
+            #
+            # Note that this might be overridden above when the job type
+            # requires a specific file format.
+            settings.setdefault('format', scene.render.image_settings.file_format)
 
         try:
             job_info = await create_job(self.user_id,

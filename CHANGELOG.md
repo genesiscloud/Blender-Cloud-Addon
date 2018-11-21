@@ -4,6 +4,8 @@
 ## Version 1.9.5 (in development)
 
 - Fix crashing Blender when running in background mode (e.g. without GUI).
+- Flamenco: Include extra job parameters to allow for encoding a video at the end of a render
+  job that produced an image sequence.
 
 
 ## Version 1.9.4 (2018-11-01)
