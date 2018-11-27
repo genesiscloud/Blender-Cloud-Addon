@@ -109,7 +109,7 @@ async def copy(context,
 
     wm = bpy.context.window_manager
 
-    with pack.Packer(base_blendfile, project, target) as packer:
+    with pack.Packer(base_blendfile, project, target, compress=True) as packer:
         with _packer_lock:
             if exclusion_filter:
                 packer.exclude(*exclusion_filter.split())
