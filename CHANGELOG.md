@@ -8,6 +8,8 @@
   job that produced an image sequence.
 - Flamenco: Compress all blend files, and not just the one we save from Blender.
   Requires BAT 0.5 or newer.
+- Flamenco: Store more info in the `jobinfo.json` file. This is mostly useful for debugging issues
+  on the render farm, as now things like the exclusion filter and Manager settings are logged too.
 
 
 ## Version 1.9.4 (2018-11-01)
