@@ -45,7 +45,7 @@ import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
 from bpy.props import StringProperty, EnumProperty, PointerProperty, BoolProperty, IntProperty
 
-from .. import async_loop, pillar, project_specific
+from .. import async_loop, pillar, project_specific, utils
 from ..utils import pyside_cache, redraw
 
 log = logging.getLogger(__name__)
@@ -284,9 +284,10 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             # requires a specific file format.
             settings.setdefault('format', scene.render.image_settings.file_format)
 
+        project_id = prefs.project.project
         try:
             job_info = await create_job(self.user_id,
-                                        prefs.project.project,
+                                        project_id,
                                         manager_id,
                                         scene.flamenco_render_job_type,
                                         settings,
@@ -302,8 +303,29 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         with open(str(outdir / 'jobinfo.json'), 'w', encoding='utf8') as outfile:
             import json
 
-            job_info['missing_files'] = [str(mf) for mf in missing_sources]
-            json.dump(job_info, outfile, sort_keys=True, indent=4)
+            # Version 1: Only the job doc was saved, with 'missing_files' added inside it.
+            # Version 2:
+            #   - '_meta' key was added to indicate version.
+            #   - 'job' is saved in a 'job' key, 'misssing_files' still top-level key.
+            #   - 'exclusion_filter', 'project_settings', and 'flamenco_manager_settings'
+            #      keys were added.
+            project_settings = prefs.get('project_settings', {}).get(project_id, {})
+            if hasattr(project_settings, 'to_dict'):
+                project_settings = project_settings.to_dict()
+
+            # Pop out some settings so that settings of irrelevant Managers are excluded.
+            flamenco_managers_settings = project_settings.pop('flamenco_managers_settings', {})
+            flamenco_manager_settings = flamenco_managers_settings.pop(manager_id)
+
+            info = {
+                '_meta': {'version': 2},
+                'job': job_info,
+                'missing_files': [str(mf) for mf in missing_sources],
+                'exclusion_filter': (prefs.flamenco_exclude_filter or '').strip(),
+                'project_settings': project_settings,
+                'flamenco_manager_settings': flamenco_manager_settings,
+            }
+            json.dump(info, outfile, sort_keys=True, indent=4, cls=utils.JSONEncoder)
 
         # We can now remove the local copy we made with bpy.ops.wm.save_as_mainfile().
         # Strictly speaking we can already remove it after the BAT-pack, but it may come in

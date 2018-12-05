@@ -16,6 +16,7 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
+import json
 import pathlib
 
 
@@ -102,3 +103,12 @@ def redraw(self, context):
     if context.area is None:
         return
     context.area.tag_redraw()
+
+
+class JSONEncoder(json.JSONEncoder):
+    """JSON encoder with support for some Blender types."""
+
+    def default(self, o):
+        if o.__class__.__name__ == 'IDPropertyGroup' and hasattr(o, 'to_dict'):
+            return o.to_dict()
+        return super().default(o)
