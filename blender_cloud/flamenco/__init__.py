@@ -56,6 +56,19 @@ flamenco_is_active = False
 # 'image' file formats that actually produce a video.
 VIDEO_FILE_FORMATS = {'FFMPEG', 'AVI_RAW', 'AVI_JPEG'}
 
+# Video container name (from bpy.context.scene.render.ffmpeg.format) to file
+# extension mapping. Any container name not listed here will be converted to
+# lower case and prepended with a period. This is basically copied from
+# Blender's source, get_file_extensions() in writeffmpeg.c.
+VIDEO_CONTAINER_TO_EXTENSION = {
+    'QUICKTIME': '.mov',
+    'MPEG1': '.mpg',
+    'MPEG2': '.dvd',
+    'MPEG4': '.mp4',
+    'OGG': '.ogv',
+    'FLASH': '.flv',
+}
+
 
 @pyside_cache('manager')
 def available_managers(self, context):
@@ -172,6 +185,18 @@ class FLAMENCO_OT_fmanagers(async_loop.AsyncModalOperatorMixin,
         super().quit()
 
 
+def guess_output_file_extension(output_format: str, scene) -> str:
+    """Return extension, including period, like '.png' or '.mkv'."""
+    if output_format not in VIDEO_FILE_FORMATS:
+        return scene.render.file_extension
+
+    container = scene.render.ffmpeg.format
+    try:
+        return VIDEO_CONTAINER_TO_EXTENSION[container]
+    except KeyError:
+        return '.' + container.lower()
+
+
 class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                          pillar.AuthenticatedPillarOperatorMixin,
                          FlamencoPollMixin,
@@ -215,11 +240,6 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             return
         self.log.info('Will output render files to %s', render_output)
 
-        # BAT-pack the files to the destination directory.
-        outdir, outfile, missing_sources = await self.bat_pack(filepath)
-        if not outfile:
-            return
-
         # Fetch Manager for doing path replacement.
         self.log.info('Going to fetch manager %s', self.user_id)
         prefs = preferences()
@@ -233,18 +253,17 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             self.quit()
             return
 
-        # Create the job at Flamenco Server.
-        context.window_manager.flamenco_status = 'COMMUNICATING'
-
+        # Construct as much of the job settings as we can before BAT-packing.
+        # Validation should happen as soon as possible (BAT-packing can take minutes).
         frame_range = scene.flamenco_render_frame_range.strip() or scene_frame_range(context)
         settings = {'blender_cmd': '{blender}',
                     'chunk_size': scene.flamenco_render_fchunk_size,
-                    'filepath': manager.replace_path(outfile),
                     'frames': frame_range,
                     'render_output': manager.replace_path(render_output),
 
                     # Used for FFmpeg combining output frames into a video.
                     'fps': scene.render.fps / scene.render.fps_base,
+                    'extract_audio': scene.render.ffmpeg.audio_codec != 'NONE',
                     }
 
         # Add extra settings specific to the job type
@@ -264,14 +283,9 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         # Let Flamenco Server know whether we'll output images or video.
         output_format = settings.get('format') or scene.render.image_settings.file_format
         if output_format in VIDEO_FILE_FORMATS:
-            # Currently we don't do any postprocessing for video, so we don't
-            # bother figuring out the final output filename.
             settings['images_or_video'] = 'video'
         else:
             settings['images_or_video'] = 'images'
-            # The file extension is necessary to find the output files and
-            # render them to a video with ffmpeg.
-            settings['output_file_extension'] = scene.render.file_extension  # like '.png'
 
             # Always pass the file format, even though it won't be
             # necessary for the actual render command (the blend file
@@ -282,6 +296,20 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             # Note that this might be overridden above when the job type
             # requires a specific file format.
             settings.setdefault('format', scene.render.image_settings.file_format)
+        settings['output_file_extension'] = guess_output_file_extension(output_format, scene)
+
+        if not self.validate_job_settings(context, settings):
+            self.quit()
+            return
+
+        # BAT-pack the files to the destination directory.
+        outdir, outfile, missing_sources = await self.bat_pack(filepath)
+        if not outfile:
+            return
+        settings['filepath'] = manager.replace_path(outfile)
+
+        # Create the job at Flamenco Server.
+        context.window_manager.flamenco_status = 'COMMUNICATING'
 
         project_id = prefs.project.project
         try:
@@ -354,6 +382,26 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             self.report({'INFO'}, 'Flamenco job created.')
 
         self.quit()
+
+    def validate_job_settings(self, context, settings: dict) -> bool:
+        """Perform settings validations for the selected job type.
+
+        :returns: True if ok, False if there was an error.
+        """
+
+        job_type = context.scene.flamenco_render_job_type
+        if job_type == 'blender-video-chunks':
+            # This is not really a requirement, but should catch the mistake where it was
+            # left at the default setting (at the moment of writing that's 1 frame per chunk).
+            if context.scene.flamenco_render_fchunk_size < 10:
+                self.report({'ERROR'}, 'Job type requires chunks of at least 10 frames.')
+                return False
+
+            if settings['output_file_extension'] != '.mkv':
+                self.report({'ERROR'}, 'Job type requires rendering to Matroska files.')
+                return False
+
+        return True
 
     def quit(self):
         if bpy.context.window_manager.flamenco_status != 'ABORTED':
@@ -659,10 +707,12 @@ def is_image_type(render_output_type: str) -> bool:
 def _render_output_path(
         local_project_path: str,
         blend_filepath: Path,
+        flamenco_render_job_type: str,
         flamenco_job_output_strip_components: int,
         flamenco_job_output_path: str,
         render_image_format: str,
         flamenco_render_frame_range: str,
+        *,
         include_rel_path: bool = True,
 ) -> typing.Optional[PurePath]:
     """Cached version of render_output_path()
@@ -695,6 +745,9 @@ def _render_output_path(
     stem = blend_filepath.stem
     if stem.endswith('.flamenco'):
         stem = stem[:-9]
+
+    if flamenco_render_job_type == 'blender-video-chunks':
+        return output_top / ('YYYY_MM_DD_SEQ-%s.mkv' % stem)
 
     if include_rel_path:
         rel_parts = proj_rel.parts[flamenco_job_output_strip_components:]
@@ -733,6 +786,7 @@ def render_output_path(context, filepath: Path = None) -> typing.Optional[PurePa
     return _render_output_path(
         prefs.cloud_project_local_path,
         filepath,
+        scene.flamenco_render_job_type,
         prefs.flamenco_job_output_strip_components,
         job_output_path,
         scene.render.image_settings.file_format,
@@ -929,6 +983,8 @@ def register():
             ('blender-render', 'Simple Render', 'Simple frame-by-frame render'),
             ('blender-render-progressive', 'Progressive Render',
              'Each frame is rendered multiple times with different Cycles sample chunks, then combined'),
+            ('blender-video-chunks', 'Video Chunks',
+             'Render each frame chunk to a video file, then concateate those video files')
         ]
     )
 

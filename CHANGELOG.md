@@ -1,7 +1,7 @@
 # Blender Cloud changelog
 
 
-## Version 1.9.5 (in development)
+## Version 2.0 (in development)
 
 - Requires Blender-Asset-Tracer 0.7 or newer.
 - Fix crashing Blender when running in background mode (e.g. without GUI).
@@ -13,6 +13,13 @@
 - Flamenco: Allow BAT-packing of only those assets that are referred to by relative path (e.g.
   a path starting with `//`). Assets with an absolute path are ignored, and assumed to be reachable
   at the same path by the Workers.
+- Flamenco: Added 'blender-video-chunks' job type, meant for rendering the edit of a film from the
+  VSE. This job type requires that the file is configured for rendering to Matroska video
+  files.
+
+  Audio is only extracted when there is an audio codec configured. This is a bit arbitrary, but it's
+  at least a way to tell whether the artist is considering that there is audio of any relevance in
+  the current blend file.
 
 
 ## Version 1.9.4 (2018-11-01)
