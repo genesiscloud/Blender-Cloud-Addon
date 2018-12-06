@@ -87,10 +87,9 @@ def manager_updated(self: 'FlamencoManagerGroup', context):
         return
 
     with project_specific.mark_as_loading():
-        for name in project_specific.FLAMENCO_PER_PROJECT_PER_MANAGER:
-            if name not in pppm:
-                continue
-            setattr(prefs, name, pppm[name])
+        project_specific.update_preferences(prefs,
+                                            project_specific.FLAMENCO_PER_PROJECT_PER_MANAGER,
+                                            pppm)
 
 
 class FlamencoManagerGroup(PropertyGroup):
@@ -422,6 +421,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         proj_abspath = bpy.path.abspath(prefs.cloud_project_local_path)
         projdir = Path(proj_abspath).resolve()
         exclusion_filter = (prefs.flamenco_exclude_filter or '').strip()
+        relative_only = prefs.flamenco_relative_only
 
         self.log.debug('outdir : %s', outdir)
         self.log.debug('projdir: %s', projdir)
@@ -436,7 +436,8 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         try:
             outfile, missing_sources = await bat_interface.copy(
-                bpy.context, filepath, projdir, outdir, exclusion_filter)
+                bpy.context, filepath, projdir, outdir, exclusion_filter,
+                relative_only=relative_only)
         except bat_interface.FileTransferError as ex:
             self.log.error('Could not transfer %d files, starting with %s',
                            len(ex.files_remaining), ex.files_remaining[0])

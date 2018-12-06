@@ -2,6 +2,7 @@
 
 import contextlib
 import logging
+import typing
 
 # Names of BlenderCloudPreferences properties that are both project-specific
 # and simple enough to store directly in a dict.
@@ -16,6 +17,7 @@ FLAMENCO_PER_PROJECT_PER_MANAGER = (
     'flamenco_job_file_path',
     'flamenco_job_output_path',
     'flamenco_job_output_strip_components',
+    'flamenco_relative_only',
 )
 
 log = logging.getLogger(__name__)
@@ -34,6 +36,27 @@ def mark_as_loading():
         yield
     finally:
         project_settings_loading -= 1
+
+
+def update_preferences(prefs, names_to_update: typing.Iterable[str],
+                       new_values: typing.Mapping[str, typing.Any]):
+    for name in names_to_update:
+        if not hasattr(prefs, name):
+            log.debug('not setting %r, property cannot be found', name)
+            continue
+
+        if name in new_values:
+            log.debug('setting %r = %r', name, new_values[name])
+            setattr(prefs, name, new_values[name])
+        else:
+            # The property wasn't stored, so set the default value instead.
+            bl_type, args = getattr(prefs.bl_rna, name)
+            log.debug('finding default value for %r', name)
+            if 'default' not in args:
+                log.debug('no default value for %r, not touching', name)
+                continue
+            log.debug('found default value for %r = %r', name, args['default'])
+            setattr(prefs, name, args['default'])
 
 
 def handle_project_update(_=None, _2=None):
@@ -78,9 +101,7 @@ def handle_project_update(_=None, _2=None):
             log.debug('loading project-specific settings:\n%s', pformat(ps.to_dict()))
 
         # Restore simple properties.
-        for name in PROJECT_SPECIFIC_SIMPLE_PROPS:
-            if name in ps and hasattr(prefs, name):
-                setattr(prefs, name, ps[name])
+        update_preferences(prefs, PROJECT_SPECIFIC_SIMPLE_PROPS, ps)
 
         # Restore Flamenco settings.
         prefs.flamenco_manager.available_managers = ps.get('flamenco_available_managers', [])

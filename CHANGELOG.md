@@ -3,13 +3,16 @@
 
 ## Version 1.9.5 (in development)
 
+- Requires Blender-Asset-Tracer 0.7 or newer.
 - Fix crashing Blender when running in background mode (e.g. without GUI).
 - Flamenco: Include extra job parameters to allow for encoding a video at the end of a render
   job that produced an image sequence.
 - Flamenco: Compress all blend files, and not just the one we save from Blender.
-  Requires BAT 0.5 or newer.
 - Flamenco: Store more info in the `jobinfo.json` file. This is mostly useful for debugging issues
   on the render farm, as now things like the exclusion filter and Manager settings are logged too.
+- Flamenco: Allow BAT-packing of only those assets that are referred to by relative path (e.g.
+  a path starting with `//`). Assets with an absolute path are ignored, and assumed to be reachable
+  at the same path by the Workers.
 
 
 ## Version 1.9.4 (2018-11-01)

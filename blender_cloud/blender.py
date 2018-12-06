@@ -248,6 +248,15 @@ class BlenderCloudPreferences(AddonPreferences):
         soft_max=4,
         update=project_specific.store,
     )
+    flamenco_relative_only = BoolProperty(
+        name='Relative Paths Only',
+        description='When enabled, only assets that are referred to with a relative path are '
+                    'packed, and assets referred to by an absolute path are excluded from the '
+                    'BAT pack. When disabled, all assets are packed.',
+        default=False,
+        update=project_specific.store,
+    )
+
     flamenco_open_browser_after_submit = BoolProperty(
         name='Open Browser after Submitting Job',
         description='When enabled, Blender will open a webbrowser',
@@ -473,6 +482,7 @@ class BlenderCloudPreferences(AddonPreferences):
             path_box.label(text='Blend file is not in your project path, '
                                 'unable to give output path example.')
 
+        flamenco_box.prop(self, 'flamenco_relative_only')
         flamenco_box.prop(self, 'flamenco_open_browser_after_submit')
 
 

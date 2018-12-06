@@ -10,7 +10,6 @@ import bpy
 from blender_asset_tracer import pack
 from blender_asset_tracer.pack import progress, transfer
 
-
 log = logging.getLogger(__name__)
 
 _running_packer = None  # type: pack.Packer
@@ -97,7 +96,9 @@ async def copy(context,
                base_blendfile: pathlib.Path,
                project: pathlib.Path,
                target: pathlib.Path,
-               exclusion_filter: str) -> typing.Tuple[pathlib.Path, typing.Set[pathlib.Path]]:
+               exclusion_filter: str,
+               *,
+               relative_only: bool) -> typing.Tuple[pathlib.Path, typing.Set[pathlib.Path]]:
     """Use BAT🦇 to copy the given file and dependencies to the target location.
 
     :raises: FileTransferError if a file couldn't be transferred.
@@ -109,7 +110,8 @@ async def copy(context,
 
     wm = bpy.context.window_manager
 
-    with pack.Packer(base_blendfile, project, target, compress=True) as packer:
+    with pack.Packer(base_blendfile, project, target, compress=True, relative_only=relative_only) \
+            as packer:
         with _packer_lock:
             if exclusion_filter:
                 packer.exclude(*exclusion_filter.split())
