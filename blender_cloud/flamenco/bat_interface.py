@@ -2,9 +2,10 @@
 
 import asyncio
 import logging
+import pathlib
+import re
 import threading
 import typing
-import pathlib
 
 import bpy
 from blender_asset_tracer import pack
@@ -114,7 +115,11 @@ async def copy(context,
             as packer:
         with _packer_lock:
             if exclusion_filter:
-                packer.exclude(*exclusion_filter.split())
+                # There was a mistake in an older version of the property tooltip,
+                # showing semicolon-separated instead of space-separated. We now
+                # just handle both.
+                filter_parts = re.split('[ ;]+', exclusion_filter.strip(' ;'))
+                packer.exclude(*filter_parts)
 
             packer.progress_cb = BatProgress()
             _running_packer = packer

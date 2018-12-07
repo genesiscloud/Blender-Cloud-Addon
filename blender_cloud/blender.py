@@ -219,8 +219,8 @@ class BlenderCloudPreferences(AddonPreferences):
     flamenco_manager = PointerProperty(type=flamenco.FlamencoManagerGroup)
     flamenco_exclude_filter = StringProperty(
         name='File Exclude Filter',
-        description='Filter like "*.abc;*.mkv" to prevent certain files to be packed '
-                    'into the output directory',
+        description='Space-separated list of filename filters, like "*.abc *.mkv", to prevent '
+                    'matching files from being packed into the output directory',
         default='',
         update=project_specific.store,
     )
