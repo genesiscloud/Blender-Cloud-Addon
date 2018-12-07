@@ -10,4 +10,4 @@ python3 setup.py wheels bdist
 DISTDIR=$(pwd)/dist
 cd /shared/software/addons
 rm -vf blender_cloud/wheels/*.whl  # remove obsolete wheel files
-unzip $DISTDIR/$FULLNAME.addon.zip
+unzip -o $DISTDIR/$FULLNAME.addon.zip
