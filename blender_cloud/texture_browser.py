@@ -244,7 +244,7 @@ class MenuItem:
 
         # draw some text
         font_id = 0
-        text_dpi = bpy.context.user_preferences.system.dpi
+        text_dpi = blender.ctx_preferences().system.dpi
         text_x = self.x + self.icon_margin_x + ICON_WIDTH + self.text_margin_x
         text_y = self.y + ICON_HEIGHT * 0.5 - 0.25 * self.text_size
         blf.position(font_id, text_x, text_y, 0)

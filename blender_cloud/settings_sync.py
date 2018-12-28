@@ -34,7 +34,7 @@ import asyncio
 import pillarsdk
 from pillarsdk import exceptions as sdk_exceptions
 from .pillar import pillar_call
-from . import async_loop, pillar, cache, blendfile, home_project
+from . import async_loop, blender, pillar, cache, blendfile, home_project
 
 SETTINGS_FILES_TO_UPLOAD = ['userpref.blend', 'startup.blend']
 
@@ -476,13 +476,13 @@ class PILLAR_OT_sync(pillar.PillarOperatorMixin,
         self.log.info('Overriding machine-local settings in %s', file_path)
 
         # Remember some settings that should not be overwritten from the Cloud.
-        up = bpy.context.user_preferences
+        prefs = blender.ctx_preferences()
         remembered = {}
         for rna_key, python_key in LOCAL_SETTINGS_RNA:
             assert '.' in python_key, 'Sorry, this code assumes there is a dot in the Python key'
 
             try:
-                value = up.path_resolve(python_key)
+                value = prefs.path_resolve(python_key)
             except ValueError:
                 # Setting doesn't exist. This can happen, for example Cycles
                 # settings on a build that doesn't have Cycles enabled.
@@ -491,7 +491,7 @@ class PILLAR_OT_sync(pillar.PillarOperatorMixin,
             # Map enums from strings (in Python) to ints (in DNA).
             dot_index = python_key.rindex('.')
             parent_key, prop_key = python_key[:dot_index], python_key[dot_index + 1:]
-            parent = up.path_resolve(parent_key)
+            parent = prefs.path_resolve(parent_key)
             prop = parent.bl_rna.properties[prop_key]
             if prop.type == 'ENUM':
                 log.debug('Rewriting %s from %r to %r',

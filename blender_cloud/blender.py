@@ -662,8 +662,16 @@ class PILLAR_PT_image_custom_properties(rna_prop_ui.PropertyPanel, bpy.types.Pan
     _property_type = bpy.types.Image
 
 
+def ctx_preferences():
+    """Returns bpy.context.preferences in a 2.79-compatible way."""
+    try:
+        return bpy.context.preferences
+    except AttributeError:
+        return bpy.context.user_preferences
+
+
 def preferences() -> BlenderCloudPreferences:
-    return bpy.context.user_preferences.addons[ADDON_NAME].preferences
+    return ctx_preferences().addons[ADDON_NAME].preferences
 
 
 def load_custom_icons():
