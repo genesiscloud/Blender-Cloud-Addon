@@ -713,8 +713,7 @@ def _render_output_path(
         render_image_format: str,
         flamenco_render_frame_range: str,
         *,
-        include_rel_path: bool = True,
-) -> typing.Optional[PurePath]:
+        include_rel_path: bool = True) -> typing.Optional[PurePath]:
     """Cached version of render_output_path()
 
     This ensures that redraws of the Flamenco Render and Add-on preferences panels
