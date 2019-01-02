@@ -18,247 +18,33 @@
 
 import asyncio
 import logging
-import threading
 import os
+import threading
+import typing
 
 import bpy
 import bgl
-import blf
 
 import pillarsdk
 from .. import async_loop, pillar, cache, blender, utils
+from . import menu_item as menu_item_mod  # so that we can have menu items called 'menu_item'
+from . import nodes
+
+if bpy.app.version < (2, 80):
+    from . import draw_27 as draw
+else:
+    from . import draw
 
 REQUIRED_ROLES_FOR_TEXTURE_BROWSER = {'subscriber', 'demo'}
 MOUSE_SCROLL_PIXELS_PER_TICK = 50
 
-ICON_WIDTH = 128
-ICON_HEIGHT = 128
 TARGET_ITEM_WIDTH = 400
 TARGET_ITEM_HEIGHT = 128
 ITEM_MARGIN_X = 5
 ITEM_MARGIN_Y = 5
 ITEM_PADDING_X = 5
 
-library_path = '/tmp'
-library_icons_path = os.path.join(os.path.dirname(__file__), "icons")
 log = logging.getLogger(__name__)
-
-
-class SpecialFolderNode(pillarsdk.Node):
-    NODE_TYPE = 'SPECIAL'
-
-
-class UpNode(SpecialFolderNode):
-    NODE_TYPE = 'UP'
-
-    def __init__(self):
-        super().__init__()
-        self['_id'] = 'UP'
-        self['node_type'] = self.NODE_TYPE
-
-
-class ProjectNode(SpecialFolderNode):
-    NODE_TYPE = 'PROJECT'
-
-    def __init__(self, project):
-        super().__init__()
-
-        assert isinstance(project, pillarsdk.Project), 'wrong type for project: %r' % type(project)
-
-        self.merge(project.to_dict())
-        self['node_type'] = self.NODE_TYPE
-
-
-class MenuItem:
-    """GUI menu item for the 3D View GUI."""
-
-    icon_margin_x = 4
-    icon_margin_y = 4
-    text_margin_x = 6
-
-    text_size = 12
-    text_size_small = 10
-
-    DEFAULT_ICONS = {
-        'FOLDER': os.path.join(library_icons_path, 'folder.png'),
-        'SPINNER': os.path.join(library_icons_path, 'spinner.png'),
-        'ERROR': os.path.join(library_icons_path, 'error.png'),
-    }
-
-    FOLDER_NODE_TYPES = {'group_texture', 'group_hdri', UpNode.NODE_TYPE, ProjectNode.NODE_TYPE}
-    SUPPORTED_NODE_TYPES = {'texture', 'hdri'}.union(FOLDER_NODE_TYPES)
-
-    def __init__(self, node, file_desc, thumb_path: str, label_text):
-        self.log = logging.getLogger('%s.MenuItem' % __name__)
-        if node['node_type'] not in self.SUPPORTED_NODE_TYPES:
-            self.log.info('Invalid node type in node: %s', node)
-            raise TypeError('Node of type %r not supported; supported are %r.' % (
-                node['node_type'], self.SUPPORTED_NODE_TYPES))
-
-        assert isinstance(node, pillarsdk.Node), 'wrong type for node: %r' % type(node)
-        assert isinstance(node['_id'], str), 'wrong type for node["_id"]: %r' % type(node['_id'])
-        self.node = node  # pillarsdk.Node, contains 'node_type' key to indicate type
-        self.file_desc = file_desc  # pillarsdk.File object, or None if a 'folder' node.
-        self.label_text = label_text
-        self.small_text = self._small_text_from_node()
-        self._thumb_path = ''
-        self.icon = None
-        self._is_folder = node['node_type'] in self.FOLDER_NODE_TYPES
-        self._is_spinning = False
-
-        # Determine sorting order.
-        # by default, sort all the way at the end and folders first.
-        self._order = 0 if self._is_folder else 10000
-        if node and node.properties and node.properties.order is not None:
-            self._order = node.properties.order
-
-        self.thumb_path = thumb_path
-
-        # Updated when drawing the image
-        self.x = 0
-        self.y = 0
-        self.width = 0
-        self.height = 0
-
-    def _small_text_from_node(self) -> str:
-        """Return the components of the texture (i.e. which map types are available)."""
-
-        if not self.node:
-            return ''
-
-        try:
-            node_files = self.node.properties.files
-        except AttributeError:
-            # Happens for nodes that don't have .properties.files.
-            return ''
-        if not node_files:
-            return ''
-
-        map_types = {f.map_type for f in node_files if f.map_type}
-        map_types.discard('color')  # all textures have colour
-        if not map_types:
-            return ''
-        return ', '.join(sorted(map_types))
-
-    def sort_key(self):
-        """Key for sorting lists of MenuItems."""
-        return self._order, self.label_text
-
-    @property
-    def thumb_path(self) -> str:
-        return self._thumb_path
-
-    @thumb_path.setter
-    def thumb_path(self, new_thumb_path: str):
-        self._is_spinning = new_thumb_path == 'SPINNER'
-
-        self._thumb_path = self.DEFAULT_ICONS.get(new_thumb_path, new_thumb_path)
-        if self._thumb_path:
-            self.icon = bpy.data.images.load(filepath=self._thumb_path)
-        else:
-            self.icon = None
-
-    @property
-    def node_uuid(self) -> str:
-        return self.node['_id']
-
-    def represents(self, node) -> bool:
-        """Returns True iff this MenuItem represents the given node."""
-
-        node_uuid = node['_id']
-        return self.node_uuid == node_uuid
-
-    def update(self, node, file_desc, thumb_path: str, label_text=None):
-        # We can get updated information about our Node, but a MenuItem should
-        # always represent one node, and it shouldn't be shared between nodes.
-        if self.node_uuid != node['_id']:
-            raise ValueError("Don't change the node ID this MenuItem reflects, "
-                             "just create a new one.")
-        self.node = node
-        self.file_desc = file_desc  # pillarsdk.File object, or None if a 'folder' node.
-        self.thumb_path = thumb_path
-
-        if label_text is not None:
-            self.label_text = label_text
-
-        if thumb_path == 'ERROR':
-            self.small_text = 'This open is broken'
-        else:
-            self.small_text = self._small_text_from_node()
-
-    @property
-    def is_folder(self) -> bool:
-        return self._is_folder
-
-    @property
-    def is_spinning(self) -> bool:
-        return self._is_spinning
-
-    def update_placement(self, x, y, width, height):
-        """Use OpenGL to draw this one menu item."""
-
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-
-    def draw(self, highlighted: bool):
-        bgl.glEnable(bgl.GL_BLEND)
-        if highlighted:
-            bgl.glColor4f(0.555, 0.555, 0.555, 0.8)
-        else:
-            bgl.glColor4f(0.447, 0.447, 0.447, 0.8)
-
-        bgl.glRectf(self.x, self.y, self.x + self.width, self.y + self.height)
-
-        texture = self.icon
-        if texture:
-            err = texture.gl_load(filter=bgl.GL_NEAREST, mag=bgl.GL_NEAREST)
-            assert not err, 'OpenGL error: %i' % err
-
-        bgl.glColor4f(0.0, 0.0, 1.0, 0.5)
-        # bgl.glLineWidth(1.5)
-
-        # ------ TEXTURE ---------#
-        if texture:
-            bgl.glBindTexture(bgl.GL_TEXTURE_2D, texture.bindcode[0])
-            bgl.glEnable(bgl.GL_TEXTURE_2D)
-        bgl.glBlendFunc(bgl.GL_SRC_ALPHA, bgl.GL_ONE_MINUS_SRC_ALPHA)
-
-        bgl.glColor4f(1, 1, 1, 1)
-        bgl.glBegin(bgl.GL_QUADS)
-        bgl.glTexCoord2d(0, 0)
-        bgl.glVertex2d(self.x + self.icon_margin_x, self.y)
-        bgl.glTexCoord2d(0, 1)
-        bgl.glVertex2d(self.x + self.icon_margin_x, self.y + ICON_HEIGHT)
-        bgl.glTexCoord2d(1, 1)
-        bgl.glVertex2d(self.x + self.icon_margin_x + ICON_WIDTH, self.y + ICON_HEIGHT)
-        bgl.glTexCoord2d(1, 0)
-        bgl.glVertex2d(self.x + self.icon_margin_x + ICON_WIDTH, self.y)
-        bgl.glEnd()
-        bgl.glDisable(bgl.GL_TEXTURE_2D)
-        bgl.glDisable(bgl.GL_BLEND)
-
-        if texture:
-            texture.gl_free()
-
-        # draw some text
-        font_id = 0
-        text_dpi = blender.ctx_preferences().system.dpi
-        text_x = self.x + self.icon_margin_x + ICON_WIDTH + self.text_margin_x
-        text_y = self.y + ICON_HEIGHT * 0.5 - 0.25 * self.text_size
-        blf.position(font_id, text_x, text_y, 0)
-        blf.size(font_id, self.text_size, text_dpi)
-        blf.draw(font_id, self.label_text)
-
-        # draw the small text
-        bgl.glColor4f(1.0, 1.0, 1.0, 0.5)
-        blf.size(font_id, self.text_size_small, text_dpi)
-        blf.position(font_id, text_x, self.y + 0.5 * self.text_size_small, 0)
-        blf.draw(font_id, self.small_text)
-
-    def hits(self, mouse_x: int, mouse_y: int) -> bool:
-        return self.x < mouse_x < self.x + self.width and self.y < mouse_y < self.y + self.height
 
 
 class BlenderCloudBrowser(pillar.PillarOperatorMixin,
@@ -422,7 +208,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
 
         bpy.context.window.cursor_set('HAND')
 
-    def descend_node(self, menu_item: MenuItem):
+    def descend_node(self, menu_item: menu_item_mod.MenuItem):
         """Descends the node hierarchy by visiting this menu item's node.
 
         Also keeps track of the current node, so that we know where the "up" button should go.
@@ -431,7 +217,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
         node = menu_item.node
         assert isinstance(node, pillarsdk.Node), 'Wrong type %s' % node
 
-        if isinstance(node, UpNode):
+        if isinstance(node, nodes.UpNode):
             # Going up.
             self.log.debug('Going up to %r', self.current_path)
             self.current_path = self.current_path.parent
@@ -443,7 +229,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
                 self.project_name = ''
         else:
             # Going down, keep track of where we were
-            if isinstance(node, ProjectNode):
+            if isinstance(node, nodes.ProjectNode):
                 self.project_name = node['name']
 
             self.current_path /= node['_id']
@@ -486,8 +272,8 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
         self.loaded_images.clear()
         self.current_display_content.clear()
 
-    def add_menu_item(self, *args) -> MenuItem:
-        menu_item = MenuItem(*args)
+    def add_menu_item(self, *args) -> menu_item_mod.MenuItem:
+        menu_item = menu_item_mod.MenuItem(*args)
 
         # Just make this thread-safe to be on the safe side.
         with self._menu_item_lock:
@@ -520,7 +306,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
             return
 
         with self._menu_item_lock:
-            self.current_display_content.sort(key=MenuItem.sort_key)
+            self.current_display_content.sort(key=menu_item_mod.MenuItem.sort_key)
 
     async def async_download_previews(self):
         self._state = 'BROWSING'
@@ -550,17 +336,17 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
             self.log.debug('No node UUID and no project UUID, listing available projects')
             children = await pillar.get_texture_projects()
             for proj_dict in children:
-                self.add_menu_item(ProjectNode(proj_dict), None, 'FOLDER', proj_dict['name'])
+                self.add_menu_item(nodes.ProjectNode(proj_dict), None, 'FOLDER', proj_dict['name'])
             return
 
         # Make sure we can go up again.
-        self.add_menu_item(UpNode(), None, 'FOLDER', '.. up ..')
+        self.add_menu_item(nodes.UpNode(), None, 'FOLDER', '.. up ..')
 
         # Download all child nodes
         self.log.debug('Iterating over child nodes of %r', self.current_path)
         for child in children:
             # print('  - %(_id)s = %(name)s' % child)
-            if child['node_type'] not in MenuItem.SUPPORTED_NODE_TYPES:
+            if child['node_type'] not in menu_item_mod.MenuItem.SUPPORTED_NODE_TYPES:
                 self.log.debug('Skipping node of type %r', child['node_type'])
                 continue
             self.add_menu_item(child, None, 'FOLDER', child['name'])
@@ -610,12 +396,9 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
             drawer(context)
 
         # For debugging: draw the state
-        font_id = 0
-        bgl.glColor4f(1.0, 1.0, 1.0, 1.0)
-        blf.size(font_id, 20, 72)
-        blf.position(font_id, 5, 5, 0)
-        blf.draw(font_id, '%s %s' % (self._state, self.project_name))
-        bgl.glDisable(bgl.GL_BLEND)
+        draw.text((5, 5),
+                  '%s %s' % (self._state, self.project_name),
+                  rgba=(1.0, 1.0, 1.0, 1.0), fsize=12)
 
     @staticmethod
     def _window_region(context):
@@ -626,6 +409,12 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
 
     def _draw_browser(self, context):
         """OpenGL drawing code for the BROWSING state."""
+        from . import draw
+
+        if not self.current_display_content:
+            self._draw_text_on_colour(context, "Communicating with Blender Cloud",
+                                      (0.0, 0.0, 0.0, 0.6))
+            return
 
         window_region = self._window_region(context)
         content_width = window_region.width - ITEM_MARGIN_X * 2
@@ -643,46 +432,33 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
         block_height = item_height + ITEM_MARGIN_Y
 
         bgl.glEnable(bgl.GL_BLEND)
-        bgl.glColor4f(0.0, 0.0, 0.0, 0.6)
-        bgl.glRectf(0, 0, window_region.width, window_region.height)
+        draw.aabox((0, 0), (window_region.width, window_region.height),
+                   (0.0, 0.0, 0.0, 0.6))
 
-        if self.current_display_content:
-            bottom_y = float('inf')
+        bottom_y = float('inf')
 
-            # The -1 / +2 are for extra rows that are drawn only half at the top/bottom.
-            first_item_idx = max(0, int(-self.scroll_offset // block_height - 1) * col_count)
-            items_per_page = int(content_height // item_height + 2) * col_count
-            last_item_idx = first_item_idx + items_per_page
+        # The -1 / +2 are for extra rows that are drawn only half at the top/bottom.
+        first_item_idx = max(0, int(-self.scroll_offset // block_height - 1) * col_count)
+        items_per_page = int(content_height // item_height + 2) * col_count
+        last_item_idx = first_item_idx + items_per_page
 
-            for item_idx, item in enumerate(self.current_display_content):
-                x = content_x + (item_idx % col_count) * block_width
-                y = content_y - (item_idx // col_count) * block_height - self.scroll_offset
+        for item_idx, item in enumerate(self.current_display_content):
+            x = content_x + (item_idx % col_count) * block_width
+            y = content_y - (item_idx // col_count) * block_height - self.scroll_offset
 
-                item.update_placement(x, y, item_width, item_height)
+            item.update_placement(x, y, item_width, item_height)
 
-                if first_item_idx <= item_idx < last_item_idx:
-                    # Only draw if the item is actually on screen.
-                    item.draw(highlighted=item.hits(self.mouse_x, self.mouse_y))
+            if first_item_idx <= item_idx < last_item_idx:
+                # Only draw if the item is actually on screen.
+                item.draw(highlighted=item.hits(self.mouse_x, self.mouse_y))
 
-                bottom_y = min(y, bottom_y)
-            self.scroll_offset_space_left = window_region.height - bottom_y
-            self.scroll_offset_max = (self.scroll_offset -
-                                      self.scroll_offset_space_left +
-                                      0.25 * block_height)
-
-        else:
-            font_id = 0
-            text = "Communicating with Blender Cloud"
-            bgl.glColor4f(1.0, 1.0, 1.0, 1.0)
-            blf.size(font_id, 20, 72)
-            text_width, text_height = blf.dimensions(font_id, text)
-            blf.position(font_id,
-                         content_x + content_width * 0.5 - text_width * 0.5,
-                         content_y - content_height * 0.3 + text_height * 0.5, 0)
-            blf.draw(font_id, text)
+            bottom_y = min(y, bottom_y)
+        self.scroll_offset_space_left = window_region.height - bottom_y
+        self.scroll_offset_max = (self.scroll_offset -
+                                  self.scroll_offset_space_left +
+                                  0.25 * block_height)
 
         bgl.glDisable(bgl.GL_BLEND)
-        # bgl.glColor4f(0.0, 0.0, 0.0, 1.0)
 
     def _draw_downloading(self, context):
         """OpenGL drawing code for the DOWNLOADING_TEXTURE state."""
@@ -705,21 +481,15 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
                                   'Initializing',
                                   (0.0, 0.0, 0.2, 0.6))
 
-    def _draw_text_on_colour(self, context, text, bgcolour):
+    def _draw_text_on_colour(self, context, text: str, bgcolour):
         content_height, content_width = self._window_size(context)
+
         bgl.glEnable(bgl.GL_BLEND)
-        bgl.glColor4f(*bgcolour)
-        bgl.glRectf(0, 0, content_width, content_height)
 
-        font_id = 0
-        bgl.glColor4f(1.0, 1.0, 1.0, 1.0)
-        blf.size(font_id, 20, 72)
-        text_width, text_height = blf.dimensions(font_id, text)
+        draw.aabox((0, 0), (content_width, content_height), bgcolour)
+        draw.text((content_width * 0.5, content_height * 0.7),
+                  text, fsize=20, align='C')
 
-        blf.position(font_id,
-                     content_width * 0.5 - text_width * 0.5,
-                     content_height * 0.7 + text_height * 0.5, 0)
-        blf.draw(font_id, text)
         bgl.glDisable(bgl.GL_BLEND)
 
     def _window_size(self, context):
@@ -736,10 +506,8 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
         content_height, content_width = self._window_size(context)
 
         bgl.glEnable(bgl.GL_BLEND)
-        bgl.glColor4f(0.2, 0.0, 0.0, 0.6)
-        bgl.glRectf(0, 0, content_width, content_height)
+        draw.aabox((0, 0), (content_width, content_height), (0.2, 0.0, 0.0, 0.6))
 
-        font_id = 0
         ex = self.async_task.exception()
         if isinstance(ex, pillar.UserNotLoggedInError):
             ex_msg = 'You are not logged in on Blender ID. Please log in at User Preferences, ' \
@@ -749,20 +517,10 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
             if not ex_msg:
                 ex_msg = str(type(ex))
         text = "An error occurred:\n%s" % ex_msg
-        lines = textwrap.wrap(text)
+        lines = textwrap.wrap(text, width=100)
 
-        bgl.glColor4f(1.0, 1.0, 1.0, 1.0)
-        blf.size(font_id, 20, 72)
-        _, text_height = blf.dimensions(font_id, 'yhBp')
+        draw.text((content_width * 0.1, content_height * 0.9), lines, fsize=16)
 
-        def position(line_nr):
-            blf.position(font_id,
-                         content_width * 0.1,
-                         content_height * 0.8 - line_nr * text_height, 0)
-
-        for line_idx, line in enumerate(lines):
-            position(line_idx)
-            blf.draw(font_id, line)
         bgl.glDisable(bgl.GL_BLEND)
 
     def _draw_subscribe(self, context):
@@ -775,7 +533,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
                                   'Click to renew your Blender Cloud subscription',
                                   (0.0, 0.0, 0.2, 0.6))
 
-    def get_clicked(self) -> MenuItem:
+    def get_clicked(self) -> typing.Optional[menu_item_mod.MenuItem]:
 
         for item in self.current_display_content:
             if item.hits(self.mouse_x, self.mouse_y):
@@ -783,7 +541,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
 
         return None
 
-    def handle_item_selection(self, context, item: MenuItem):
+    def handle_item_selection(self, context, item: menu_item_mod.MenuItem):
         """Called when the user clicks on a menu item that doesn't represent a folder."""
 
         from pillarsdk.utils import sanitize_filename

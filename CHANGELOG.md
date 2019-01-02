@@ -1,6 +1,11 @@
 # Blender Cloud changelog
 
 
+## Version 1.11.0 (in development, could become version 2.0.0 as well)
+
+- Texture Browser now works on Blender 2.8.
+
+
 ## Version 1.10.0 (2019-01-02)
 
 - Bundles Blender-Asset-Tracer 0.8.
