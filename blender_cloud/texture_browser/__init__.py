@@ -26,7 +26,7 @@ import bgl
 import blf
 
 import pillarsdk
-from . import async_loop, pillar, cache, blender, utils
+from .. import async_loop, pillar, cache, blender, utils
 
 REQUIRED_ROLES_FOR_TEXTURE_BROWSER = {'subscriber', 'demo'}
 MOUSE_SCROLL_PIXELS_PER_TICK = 50
