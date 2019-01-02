@@ -3,7 +3,7 @@
 
 ## Version 2.0 (in development)
 
-- Requires Blender-Asset-Tracer 0.7 or newer.
+- Bundles Blender-Asset-Tracer 0.8.
 - Fix crashing Blender when running in background mode (e.g. without GUI).
 - Flamenco: Include extra job parameters to allow for encoding a video at the end of a render
   job that produced an image sequence.
