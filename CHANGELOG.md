@@ -1,7 +1,7 @@
 # Blender Cloud changelog
 
 
-## Version 2.0 (in development)
+## Version 1.10.0 (2019-01-02)
 
 - Bundles Blender-Asset-Tracer 0.8.
 - Fix crashing Blender when running in background mode (e.g. without GUI).
