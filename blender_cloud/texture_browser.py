@@ -935,13 +935,11 @@ class PILLAR_OT_switch_hdri(pillar.PillarOperatorMixin,
         self._state = 'QUIT'
 
     async def download_and_replace(self, context):
-        from .pillar import sanitize_filename
-
         self._state = 'DOWNLOADING_TEXTURE'
 
         current_image = bpy.data.images[self.image_name]
         node = current_image['bcloud_node']
-        filename = '%s.taken_from_file' % sanitize_filename(node['name'])
+        filename = '%s.taken_from_file' % pillar.sanitize_filename(node['name'])
 
         local_path = os.path.dirname(bpy.path.abspath(current_image.filepath))
         top_texture_directory = bpy.path.abspath(context.scene.local_texture_dir)
