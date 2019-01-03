@@ -707,18 +707,19 @@ class PILLAR_OT_switch_hdri(pillar.PillarOperatorMixin,
         resolution = next(file_ref['resolution'] for file_ref in node['properties']['files']
                           if file_ref['file'] == file_uuid)
 
-        self.log.info('Downloading file %r-%s to %s', file_uuid, resolution, local_path)
-        self.log.debug('Metadata will be stored at %s', meta_path)
+        my_log = self.log
+        my_log.info('Downloading file %r-%s to %s', file_uuid, resolution, local_path)
+        my_log.debug('Metadata will be stored at %s', meta_path)
 
         def file_loading(file_path, file_desc, map_type):
-            self.log.info('Texture downloading to %s (%s)',
-                          file_path, utils.sizeof_fmt(file_desc['length']))
+            my_log.info('Texture downloading to %s (%s)',
+                        file_path, utils.sizeof_fmt(file_desc['length']))
 
         async def file_loaded(file_path, file_desc, map_type):
             if context.scene.local_texture_dir.startswith('//'):
                 file_path = bpy.path.relpath(file_path)
 
-            self.log.info('Texture downloaded to %s', file_path)
+            my_log.info('Texture downloaded to %s', file_path)
             current_image['bcloud_file_uuid'] = file_uuid
             current_image.filepath = file_path  # This automatically reloads the image from disk.
 
