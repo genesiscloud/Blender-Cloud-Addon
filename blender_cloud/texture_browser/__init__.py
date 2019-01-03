@@ -723,6 +723,11 @@ class PILLAR_OT_switch_hdri(pillar.PillarOperatorMixin,
             current_image['bcloud_file_uuid'] = file_uuid
             current_image.filepath = file_path  # This automatically reloads the image from disk.
 
+            # This forces users of the image to update.
+            for datablocks in bpy.data.user_map({current_image}).values():
+                for datablock in datablocks:
+                    datablock.update_tag()
+
         await pillar.download_file_by_uuid(file_uuid,
                                            local_path,
                                            meta_path,
