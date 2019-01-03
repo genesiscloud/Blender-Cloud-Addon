@@ -96,18 +96,18 @@ class CloudPath(pathlib.PurePosixPath):
     def project_uuid(self) -> str:
         assert self.parts[0] == '/'
         if len(self.parts) <= 1:
-            return None
+            return ''
         return self.parts[1]
 
     @property
-    def node_uuids(self) -> list:
+    def node_uuids(self) -> tuple:
         assert self.parts[0] == '/'
         return self.parts[2:]
 
     @property
     def node_uuid(self) -> str:
         if len(self.parts) <= 2:
-            return None
+            return ''
 
         return self.parts[-1]
 

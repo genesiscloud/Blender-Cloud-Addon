@@ -25,6 +25,7 @@ import functools
 import logging
 import pathlib
 import tempfile
+import typing
 import shutil
 
 import bpy
@@ -100,7 +101,7 @@ async def find_sync_group_id(home_project_id: str,
                              user_id: str,
                              blender_version: str,
                              *,
-                             may_create=True) -> str:
+                             may_create=True) -> typing.Tuple[str, str]:
     """Finds the group node in which to store sync assets.
 
     If the group node doesn't exist and may_create=True, it creates it.
@@ -122,7 +123,7 @@ async def find_sync_group_id(home_project_id: str,
 
     if not may_create and sync_group is None:
         log.info("Sync folder doesn't exist, and not creating it either.")
-        return None, None
+        return '', ''
 
     # Find/create the sub-group for the requested Blender version
     try:
@@ -144,7 +145,7 @@ async def find_sync_group_id(home_project_id: str,
     if not may_create and sub_sync_group is None:
         log.info("Sync folder for Blender version %s doesn't exist, "
                  "and not creating it either.", blender_version)
-        return sync_group['_id'], None
+        return sync_group['_id'], ''
 
     return sync_group['_id'], sub_sync_group['_id']
 
@@ -203,9 +204,9 @@ class PILLAR_OT_sync(pillar.PillarOperatorMixin,
     bl_description = 'Synchronises Blender settings with Blender Cloud'
 
     log = logging.getLogger('bpy.ops.%s' % bl_idname)
-    home_project_id = None
-    sync_group_id = None  # top-level sync group node ID
-    sync_group_versioned_id = None  # sync group node ID for the given Blender version.
+    home_project_id = ''
+    sync_group_id = ''  # top-level sync group node ID
+    sync_group_versioned_id = ''  # sync group node ID for the given Blender version.
 
     action = bpy.props.EnumProperty(
         items=[
@@ -387,12 +388,12 @@ class PILLAR_OT_sync(pillar.PillarOperatorMixin,
         """Loads files from the Pillar server."""
 
         # If the sync group node doesn't exist, offer a list of groups that do.
-        if self.sync_group_id is None:
+        if not self.sync_group_id:
             self.bss_report({'ERROR'},
                             'There are no synced Blender settings in your Blender Cloud.')
             return
 
-        if self.sync_group_versioned_id is None:
+        if not self.sync_group_versioned_id:
             self.bss_report({'ERROR'}, 'Therre are no synced Blender settings for version %s' %
                             self.blender_version)
             return

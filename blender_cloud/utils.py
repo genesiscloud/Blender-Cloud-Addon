@@ -18,6 +18,7 @@
 
 import json
 import pathlib
+import typing
 
 
 def sizeof_fmt(num: int, suffix='B') -> str:
@@ -29,12 +30,12 @@ def sizeof_fmt(num: int, suffix='B') -> str:
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024:
             return '%.1f %s%s' % (num, unit, suffix)
-        num /= 1024
+        num //= 1024
 
     return '%.1f Yi%s' % (num, suffix)
 
 
-def find_in_path(path: pathlib.Path, filename: str) -> pathlib.Path:
+def find_in_path(path: pathlib.Path, filename: str) -> typing.Optional[pathlib.Path]:
     """Performs a breadth-first search for the filename.
 
     Returns the path that contains the file, or None if not found.

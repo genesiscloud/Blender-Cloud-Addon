@@ -59,17 +59,17 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
     project_name = ''
 
     # This contains a stack of Node objects that lead up to the currently browsed node.
-    path_stack = []
+    path_stack = []  # type: typing.List[pillarsdk.Node]
 
     # This contains a stack of MenuItem objects that lead up to the currently browsed node.
-    menu_item_stack = []
+    menu_item_stack = []  # type: typing.List[menu_item_mod.MenuItem]
 
     timer = None
     log = logging.getLogger('%s.BlenderCloudBrowser' % __name__)
 
     _menu_item_lock = threading.Lock()
-    current_display_content = []  # list of MenuItems currently displayed
-    loaded_images = set()
+    current_display_content = []  # type: typing.List[menu_item_mod.MenuItem]
+    loaded_images = set()  # type: typing.Set[str]
     thumbnails_cache = ''
     maximized_area = False
 
@@ -278,7 +278,8 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
         # Just make this thread-safe to be on the safe side.
         with self._menu_item_lock:
             self.current_display_content.append(menu_item)
-            self.loaded_images.add(menu_item.icon.filepath_raw)
+            if menu_item.icon is not None:
+                self.loaded_images.add(menu_item.icon.filepath_raw)
 
         self.sort_menu()
 

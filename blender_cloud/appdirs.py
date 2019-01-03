@@ -511,7 +511,7 @@ if system == "win32":
         _get_win_folder = _get_win_folder_with_pywin32
     except ImportError:
         try:
-            from ctypes import windll
+            from ctypes import windll  # type: ignore
             _get_win_folder = _get_win_folder_with_ctypes
         except ImportError:
             try:

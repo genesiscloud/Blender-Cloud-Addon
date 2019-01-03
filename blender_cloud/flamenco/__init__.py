@@ -445,7 +445,8 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         return filepath
 
-    async def bat_pack(self, filepath: Path) -> (Path, typing.Optional[Path], typing.List[Path]):
+    async def bat_pack(self, filepath: Path) \
+            -> typing.Tuple[Path, typing.Optional[Path], typing.List[Path]]:
         """BAT-packs the blendfile to the destination directory.
 
         Returns the path of the destination blend file.

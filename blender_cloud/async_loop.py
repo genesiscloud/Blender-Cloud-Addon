@@ -23,6 +23,7 @@ import traceback
 import concurrent.futures
 import logging
 import gc
+import typing
 
 import bpy
 
@@ -238,7 +239,7 @@ class AsyncModalOperatorMixin:
         self._stop_async_task()
         context.window_manager.event_timer_remove(self.timer)
 
-    def _new_async_task(self, async_task: asyncio.coroutine, future: asyncio.Future = None):
+    def _new_async_task(self, async_task: typing.Coroutine, future: asyncio.Future = None):
         """Stops the currently running async task, and starts another one."""
 
         self.log.debug('Setting up a new task %r, so any existing task must be stopped', async_task)
