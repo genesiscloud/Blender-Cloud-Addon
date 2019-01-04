@@ -1,9 +1,10 @@
 # Blender Cloud changelog
 
 
-## Version 1.11.0 (in development, could become version 2.0.0 as well)
+## Version 1.11.0 (2019-01-04)
 
 - Texture Browser now works on Blender 2.8.
+- Blender Sync: Fixed compatibility issue with Blender 2.8.
 
 
 ## Version 1.10.0 (2019-01-02)
