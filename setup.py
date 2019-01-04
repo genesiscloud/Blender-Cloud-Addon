@@ -240,8 +240,12 @@ setup(
     author='Sybren A. Stüvel',
     author_email='sybren@stuvel.eu',
     packages=find_packages('.'),
-    data_files=[('blender_cloud', ['README.md', 'README-flamenco.md', 'CHANGELOG.md']),
-                ('blender_cloud/icons', glob.glob('blender_cloud/icons/*'))],
+    data_files=[
+        ('blender_cloud', ['README.md', 'README-flamenco.md', 'CHANGELOG.md']),
+        ('blender_cloud/icons', glob.glob('blender_cloud/icons/*')),
+        ('blender_cloud/texture_browser/icons',
+         glob.glob('blender_cloud/texture_browser/icons/*'))
+    ],
     scripts=[],
     url='https://developer.blender.org/diffusion/BCA/',
     license='GNU General Public License v2 or later (GPLv2+)',

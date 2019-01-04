@@ -1,6 +1,11 @@
 # Blender Cloud changelog
 
 
+## Version 1.11.1 (2019-01-04)
+
+- Bundled missing Texture Browser icons.
+
+
 ## Version 1.11.0 (2019-01-04)
 
 - Texture Browser now works on Blender 2.8.
