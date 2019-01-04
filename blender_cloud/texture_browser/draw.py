@@ -11,8 +11,12 @@ import bpy
 import gpu
 from gpu_extras.batch import batch_for_shader
 
-shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
-texture_shader = gpu.shader.from_builtin('2D_IMAGE')
+if bpy.app.background:
+    shader = None
+    texture_shader = None
+else:
+    shader = gpu.shader.from_builtin('2D_UNIFORM_COLOR')
+    texture_shader = gpu.shader.from_builtin('2D_IMAGE')
 
 Float2 = typing.Tuple[float, float]
 Float3 = typing.Tuple[float, float, float]
