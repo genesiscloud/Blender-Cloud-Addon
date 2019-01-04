@@ -40,6 +40,11 @@ ADDON_NAME = 'blender_cloud'
 log = logging.getLogger(__name__)
 icons = None
 
+if bpy.app.version < (2, 80):
+    SYNC_SELECT_VERSION_ICON = 'DOTSDOWN'
+else:
+    SYNC_SELECT_VERSION_ICON = 'DOWNARROW_HLT'
+
 
 @functools.lru_cache()
 def factor(factor: float) -> dict:
@@ -385,7 +390,7 @@ class BlenderCloudPreferences(AddonPreferences):
                 props.blender_version = version
                 row_pull.operator('pillar.sync',
                                   text='',
-                                  icon='DOTSDOWN').action = 'SELECT'
+                                  icon=SYNC_SELECT_VERSION_ICON).action = 'SELECT'
         else:
             row_pull.label(text='Cloud Sync is running.')
 
