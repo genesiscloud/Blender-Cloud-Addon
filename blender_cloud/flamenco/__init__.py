@@ -70,6 +70,19 @@ VIDEO_CONTAINER_TO_EXTENSION = {
 }
 
 
+def scene_sample_count(scene) -> int:
+    """Determine nr of render samples for this scene."""
+    if scene.cycles.progressive == 'BRANCHED_PATH':
+        samples = scene.cycles.aa_samples
+    else:
+        samples = scene.cycles.samples
+
+    if scene.cycles.use_square_samples:
+        samples **= 2
+
+    return samples
+
+
 @pyside_cache('manager')
 def available_managers(self, context):
     """Returns the list of items used by a manager-selector EnumProperty."""
@@ -268,14 +281,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         # Add extra settings specific to the job type
         if scene.flamenco_render_job_type == 'blender-render-progressive':
-            if scene.cycles.progressive == 'BRANCHED_PATH':
-                samples = scene.cycles.aa_samples
-            else:
-                samples = scene.cycles.samples
-
-            if scene.cycles.use_square_samples:
-                samples **= 2
-
+            samples = scene_sample_count(scene)
             settings['cycles_sample_cap'] = scene.flamenco_render_chunk_sample_cap
             settings['cycles_sample_count'] = samples
             settings['format'] = 'EXR'
@@ -663,6 +669,18 @@ class FLAMENCO_OT_disable_output_path_override(Operator):
         return {'FINISHED'}
 
 
+class FLAMENCO_OT_set_recommended_sample_cap(Operator):
+    bl_idname = 'flamenco.set_recommended_sample_cap'
+    bl_label = 'Set Recommended Maximum Sample Count'
+    bl_description = 'Set the recommended maximum samples per render task'
+
+    sample_cap = IntProperty()
+
+    def execute(self, context):
+        context.scene.flamenco_render_chunk_sample_cap = self.sample_cap
+        return {'FINISHED'}
+
+
 async def create_job(user_id: str,
                      project_id: str,
                      manager_id: str,
@@ -843,6 +861,16 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         if getattr(context.scene, 'flamenco_render_job_type', None) == 'blender-render-progressive':
             box = layout.box()
             box.prop(context.scene, 'flamenco_render_chunk_sample_cap')
+
+            sample_count = scene_sample_count(context.scene)
+            recommended_cap = sample_count // 4
+
+            split = box.split(**blender.factor(0.4))
+            split.label(text='Total Sample Count: %d' % sample_count)
+            props = split.operator('flamenco.set_recommended_sample_cap',
+                                   text='Recommended Max Samples per Task: %d' % recommended_cap)
+            props.sample_cap = recommended_cap
+
         labeled_row = layout.split(**blender.factor(0.25), align=True)
         labeled_row.label(text='Frame Range:')
         prop_btn_row = labeled_row.row(align=True)
