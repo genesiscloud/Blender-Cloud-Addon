@@ -869,6 +869,11 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
                 # be used to submit a job to farm running Blender 2.80.
                 return
 
+            if context.scene.render.engine != 'CYCLES':
+                box.alert = True
+                box.label(text='Progressive rendering requires Cycles', icon='ERROR')
+                return
+
             box.prop(context.scene, 'flamenco_render_chunk_sample_cap')
 
             sample_count = scene_sample_count(context.scene)
