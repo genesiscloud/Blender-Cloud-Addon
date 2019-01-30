@@ -860,6 +860,15 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         # Job-type-specific options go directly below the job type selector.
         if getattr(context.scene, 'flamenco_render_job_type', None) == 'blender-render-progressive':
             box = layout.box()
+
+            if bpy.app.version < (2, 80):
+                box.alert = True
+                box.label(text='Progressive rendering requires Blender 2.80 or newer.',
+                          icon='ERROR')
+                # This isn't entirely fair, as Blender 2.79 could hypothetically
+                # be used to submit a job to farm running Blender 2.80.
+                return
+
             box.prop(context.scene, 'flamenco_render_chunk_sample_cap')
 
             sample_count = scene_sample_count(context.scene)
