@@ -970,7 +970,7 @@ def register():
 
     scene = bpy.types.Scene
     scene.flamenco_render_fchunk_size = IntProperty(
-        name='Frame Chunk Size',
+        name='Frames per Task',
         description='Maximum number of frames to render per task',
         min=1,
         default=1,
