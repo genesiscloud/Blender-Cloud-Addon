@@ -436,6 +436,14 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         old_use_overwrite = render.use_overwrite
         old_use_placeholder = render.use_placeholder
 
+        disable_denoiser = (context.scene.flamenco_render_job_type == 'blender-render-progressive'
+                            and render.engine == 'CYCLES')
+        if disable_denoiser:
+            use_denoising = [layer.cycles.use_denoising
+                             for layer in context.scene.view_layers]
+        else:
+            use_denoising = []
+
         try:
 
             # The file extension should be determined by the render settings, not necessarily
@@ -445,6 +453,10 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             # Rescheduling should not overwrite existing frames.
             render.use_overwrite = False
             render.use_placeholder = False
+
+            if disable_denoiser:
+                for layer in context.scene.view_layers:
+                    layer.cycles.use_denoising = False
 
             filepath = Path(context.blend_data.filepath).with_suffix('.flamenco.blend')
             self.log.info('Saving copy to temporary file %s', filepath)
@@ -456,6 +468,10 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             render.use_file_extension = old_use_file_extension
             render.use_overwrite = old_use_overwrite
             render.use_placeholder = old_use_placeholder
+
+            if disable_denoiser:
+                for denoise, layer in zip(use_denoising, context.scene.view_layers):
+                    layer.cycles.use_denoising = denoise
 
         return filepath
 
@@ -884,6 +900,9 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
             props = split.operator('flamenco.set_recommended_sample_cap',
                                    text='Recommended Max Samples per Task: %d' % recommended_cap)
             props.sample_cap = recommended_cap
+
+            if any(layer.cycles.use_denoising for layer in context.scene.view_layers):
+                box.label(text='Progressive Rendering will disable Denoising.', icon='ERROR')
 
         labeled_row = layout.split(**blender.factor(0.25), align=True)
         labeled_row.label(text='Frame Range:')
