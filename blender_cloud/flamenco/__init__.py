@@ -322,7 +322,15 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                                         priority=scene.flamenco_render_job_priority,
                                         start_paused=scene.flamenco_start_paused)
         except Exception as ex:
-            self.report({'ERROR'}, 'Error creating Flamenco job: %s' % ex)
+            message = str(ex)
+            if isinstance(ex, pillarsdk.exceptions.BadRequest):
+                payload = ex.response.json()
+                try:
+                    message = payload['_error']['message']
+                except KeyError:
+                    pass
+            self.log.exception('Error creating Flamenco job')
+            self.report({'ERROR'}, 'Error creating Flamenco job: %s' % message)
             self.quit()
             return
 
