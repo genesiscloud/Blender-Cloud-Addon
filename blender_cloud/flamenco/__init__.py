@@ -839,6 +839,10 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         labeled_row.label(text='Job Type:')
         labeled_row.prop(context.scene, 'flamenco_render_job_type', text='')
 
+        # Job-type-specific options go directly below the job type selector.
+        if getattr(context.scene, 'flamenco_render_job_type', None) == 'blender-render-progressive':
+            box = layout.box()
+            box.prop(context.scene, 'flamenco_render_chunk_sample_cap')
         labeled_row = layout.split(**blender.factor(0.25), align=True)
         labeled_row.label(text='Frame Range:')
         prop_btn_row = labeled_row.row(align=True)
@@ -847,8 +851,6 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
 
         layout.prop(context.scene, 'flamenco_render_job_priority')
         layout.prop(context.scene, 'flamenco_render_fchunk_size')
-        if getattr(context.scene, 'flamenco_render_job_type', None) == 'blender-render-progressive':
-            layout.prop(context.scene, 'flamenco_render_chunk_sample_cap')
         layout.prop(context.scene, 'flamenco_start_paused')
 
         paths_layout = layout.column(align=True)
