@@ -1,5 +1,14 @@
 # Blender Cloud changelog
 
+## Version 1.12 (in development)
+
+- Flamenco: Change how progressive render tasks are created. Instead of the artist setting a fixed
+  number of sample chunks, they can now set a maximum number of samples for each render task.
+  Initial render tasks are created with a low number of samples, and subsequent tasks have an
+  increasing number of samples, up to the set maximum. The total number of samples of the final
+  render is still equal to the number of samples configured in the blend file.
+  Requires Flamenco Server 2.2 or newer.
+
 
 ## Version 1.11.1 (2019-01-04)
 

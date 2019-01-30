@@ -276,7 +276,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             if scene.cycles.use_square_samples:
                 samples **= 2
 
-            settings['cycles_num_chunks'] = scene.flamenco_render_schunk_count
+            settings['cycles_sample_cap'] = scene.flamenco_render_chunk_sample_cap
             settings['cycles_sample_count'] = samples
             settings['format'] = 'EXR'
 
@@ -847,10 +847,9 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
 
         layout.prop(context.scene, 'flamenco_render_job_priority')
         layout.prop(context.scene, 'flamenco_render_fchunk_size')
-        layout.prop(context.scene, 'flamenco_start_paused')
-
         if getattr(context.scene, 'flamenco_render_job_type', None) == 'blender-render-progressive':
-            layout.prop(context.scene, 'flamenco_render_schunk_count')
+            layout.prop(context.scene, 'flamenco_render_chunk_sample_cap')
+        layout.prop(context.scene, 'flamenco_start_paused')
 
         paths_layout = layout.column(align=True)
 
@@ -974,16 +973,19 @@ def register():
         min=1,
         default=1,
     )
-    scene.flamenco_render_schunk_count = IntProperty(
-        name='Number of Sample Chunks',
-        description='Number of Cycles samples chunks to use per frame',
-        min=2,
-        default=3,
-        soft_max=10,
+    scene.flamenco_render_chunk_sample_cap = IntProperty(
+        name='Maximum Samples per Task',
+        description='Maximum number of samples per render task; a lower number creates more '
+                    'shorter-running tasks. Values between 1/10 and 1/4 of the total sample count '
+                    'seem sensible',
+        min=1,
+        soft_min=5,
+        default=100,
+        soft_max=1000,
     )
     scene.flamenco_render_frame_range = StringProperty(
         name='Frame Range',
-        description='Frames to render, in "printer range" notation'
+        description='Frames to render, in "printer range" notation',
     )
     scene.flamenco_render_job_type = EnumProperty(
         name='Job Type',
@@ -1065,7 +1067,7 @@ def unregister():
             log.warning('Unable to unregister class %r, probably already unregistered', cls)
 
     for name in ('flamenco_render_fchunk_size',
-                 'flamenco_render_schunk_count',
+                 'flamenco_render_chunk_sample_cap',
                  'flamenco_render_frame_range',
                  'flamenco_render_job_type',
                  'flamenco_start_paused',
