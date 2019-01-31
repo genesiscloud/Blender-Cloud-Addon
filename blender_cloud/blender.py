@@ -267,6 +267,13 @@ class BlenderCloudPreferences(AddonPreferences):
         description='When enabled, Blender will open a webbrowser',
         default=True,
     )
+    flamenco_show_quit_after_submit_button = BoolProperty(
+        name='Show "Submit & Quit" button',
+        description='When enabled, next to the "Render on Flamenco" button there will be a button '
+                    '"Submit & Quit" that silently quits Blender after submitting the render job '
+                    'to Flamenco',
+        default=False,
+    )
 
     def draw(self, context):
         import textwrap
@@ -489,6 +496,7 @@ class BlenderCloudPreferences(AddonPreferences):
 
         flamenco_box.prop(self, 'flamenco_relative_only')
         flamenco_box.prop(self, 'flamenco_open_browser_after_submit')
+        flamenco_box.prop(self, 'flamenco_show_quit_after_submit_button')
 
 
 class PillarCredentialsUpdate(pillar.PillarOperatorMixin,

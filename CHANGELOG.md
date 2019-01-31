@@ -8,6 +8,10 @@
   increasing number of samples, up to the set maximum. The total number of samples of the final
   render is still equal to the number of samples configured in the blend file.
   Requires Flamenco Server 2.2 or newer.
+- Flamenco: Added a hidden "Submit & Quit" button. This button can be enabled in the add-on
+  preferences and and then be available on the Flamenco Render panel. Pressing the button will
+  silently close Blender after the job has been submitted to Flamenco (for example to click,
+  walk away, and free up memory for when the same machine is part of the render farm).
 
 
 ## Version 1.11.1 (2019-01-04)

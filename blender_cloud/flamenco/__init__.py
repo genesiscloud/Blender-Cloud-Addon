@@ -118,6 +118,19 @@ def manager_updated(self: 'FlamencoManagerGroup', context):
                                             pppm)
 
 
+def silently_quit_blender():
+    """Quit Blender without any confirmation popup."""
+
+    try:
+        prefs = bpy.context.preferences
+    except AttributeError:
+        # Backward compatibility with Blender < 2.80
+        prefs = bpy.context.user_preferences
+
+    prefs.view.use_quit_dialog = False
+    bpy.ops.wm.quit_blender()
+
+
 class FlamencoManagerGroup(PropertyGroup):
     manager = EnumProperty(
         items=available_managers,
@@ -221,6 +234,8 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
     stop_upon_exception = True
     log = logging.getLogger('%s.FLAMENCO_OT_render' % __name__)
+
+    quit_after_submit = BoolProperty()
 
     async def async_execute(self, context):
         # Refuse to start if the file hasn't been saved. It's okay if
@@ -394,6 +409,9 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                         '; '.join(names))
         else:
             self.report({'INFO'}, 'Flamenco job created.')
+
+        if self.quit_after_submit:
+            silently_quit_blender()
 
         self.quit()
 
@@ -955,9 +973,17 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         # Show current status of Flamenco.
         flamenco_status = context.window_manager.flamenco_status
         if flamenco_status in {'IDLE', 'ABORTED', 'DONE'}:
-            layout.operator(FLAMENCO_OT_render.bl_idname,
-                            text='Render on Flamenco',
-                            icon='RENDER_ANIMATION')
+            if prefs.flamenco_show_quit_after_submit_button:
+                ui = paths_layout.split(**blender.factor(0.75), align=True)
+            else:
+                ui = layout
+            ui.operator(FLAMENCO_OT_render.bl_idname,
+                        text='Render on Flamenco',
+                        icon='RENDER_ANIMATION').quit_after_submit = False
+            if prefs.flamenco_show_quit_after_submit_button:
+                ui.operator(FLAMENCO_OT_render.bl_idname,
+                            text='Submit & Quit',
+                            icon='RENDER_ANIMATION').quit_after_submit = True
             if bpy.app.debug:
                 layout.operator(FLAMENCO_OT_copy_files.bl_idname)
         elif flamenco_status == 'INVESTIGATING':
