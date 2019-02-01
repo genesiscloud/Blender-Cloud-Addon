@@ -512,7 +512,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
         ex = self.async_task.exception()
         if isinstance(ex, pillar.UserNotLoggedInError):
             ex_msg = 'You are not logged in on Blender ID. Please log in at User Preferences, ' \
-                     'System, Blender ID.'
+                     'Add-ons, Blender ID Authentication.'
         else:
             ex_msg = str(ex)
             if not ex_msg:
