@@ -970,6 +970,8 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
             labeled_row.label(text='Effective Output Path:')
             labeled_row.label(text=str(render_output))
 
+        self.draw_odd_size_warning(layout, context.scene.render)
+
         # Show current status of Flamenco.
         flamenco_status = context.window_manager.flamenco_status
         if flamenco_status in {'IDLE', 'ABORTED', 'DONE'}:
@@ -1003,6 +1005,29 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
             row.operator(FLAMENCO_OT_abort.bl_idname, text='', icon='CANCEL')
         elif flamenco_status != 'IDLE' and context.window_manager.flamenco_status_txt:
             layout.label(text=context.window_manager.flamenco_status_txt)
+
+    def draw_odd_size_warning(self, layout, render):
+        render_width = render.resolution_x * render.resolution_percentage // 100
+        render_height = render.resolution_y * render.resolution_percentage // 100
+
+        odd_width = render_width % 2
+        odd_height = render_height % 2
+
+        if not odd_width and not odd_height:
+            return
+
+        box = layout.box()
+        box.alert = True
+
+        if odd_width and odd_height:
+            msg = 'Both X (%d) and Y (%d) resolution are' % (render_width, render_height)
+        elif odd_width:
+            msg = 'X resolution (%d) is' % render_width
+        else:
+            msg = 'Y resolution (%d) is' % render_height
+
+        box.label(text=msg + ' not divisible by 2.', icon='ERROR')
+        box.label(text='Any video rendered from these frames will be padded with black pixels.')
 
 
 def activate():
