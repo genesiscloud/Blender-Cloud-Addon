@@ -974,7 +974,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         flamenco_status = context.window_manager.flamenco_status
         if flamenco_status in {'IDLE', 'ABORTED', 'DONE'}:
             if prefs.flamenco_show_quit_after_submit_button:
-                ui = paths_layout.split(**blender.factor(0.75), align=True)
+                ui = layout.split(**blender.factor(0.75), align=True)
             else:
                 ui = layout
             ui.operator(FLAMENCO_OT_render.bl_idname,
