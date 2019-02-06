@@ -892,9 +892,8 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         labeled_row.prop(context.scene, 'flamenco_render_job_type', text='')
 
         # Job-type-specific options go directly below the job type selector.
+        box = layout.box()
         if getattr(context.scene, 'flamenco_render_job_type', None) == 'blender-render-progressive':
-            box = layout.box()
-
             if bpy.app.version < (2, 80):
                 box.alert = True
                 box.label(text='Progressive rendering requires Blender 2.80 or newer.',
@@ -922,6 +921,11 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
             if any(layer.cycles.use_denoising for layer in context.scene.view_layers):
                 box.label(text='Progressive Rendering will disable Denoising.', icon='ERROR')
 
+            box.prop(context.scene, 'flamenco_render_fchunk_size',
+                     text='Minimum Frames per Task')
+        else:
+            box.prop(context.scene, 'flamenco_render_fchunk_size')
+
         labeled_row = layout.split(**blender.factor(0.25), align=True)
         labeled_row.label(text='Frame Range:')
         prop_btn_row = labeled_row.row(align=True)
@@ -929,7 +933,6 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         prop_btn_row.operator('flamenco.scene_to_frame_range', text='', icon='ARROW_LEFTRIGHT')
 
         layout.prop(context.scene, 'flamenco_render_job_priority')
-        layout.prop(context.scene, 'flamenco_render_fchunk_size')
         layout.prop(context.scene, 'flamenco_start_paused')
 
         paths_layout = layout.column(align=True)
@@ -1083,7 +1086,8 @@ def register():
     scene = bpy.types.Scene
     scene.flamenco_render_fchunk_size = IntProperty(
         name='Frames per Task',
-        description='Maximum number of frames to render per task',
+        description='Number of frames to render per task. For progressive renders this is used '
+                    'when the sample limit is reached -- before that more frames are used',
         min=1,
         default=1,
     )
