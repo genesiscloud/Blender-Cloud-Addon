@@ -12,6 +12,8 @@
   preferences and and then be available on the Flamenco Render panel. Pressing the button will
   silently close Blender after the job has been submitted to Flamenco (for example to click,
   walk away, and free up memory for when the same machine is part of the render farm).
+- Flamenco: Name render jobs just 'thefile' instead of 'Render thefile.flamenco.blend'.
+  This makes the job overview on Flamenco Server cleaner.
 
 
 ## Version 1.11.1 (2019-01-04)

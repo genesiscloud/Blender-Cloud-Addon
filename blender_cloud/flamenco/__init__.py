@@ -333,13 +333,14 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         context.window_manager.flamenco_status = 'COMMUNICATING'
 
         project_id = prefs.project.project
+        job_name = self._make_job_name(filepath)
         try:
             job_info = await create_job(self.user_id,
                                         project_id,
                                         manager_id,
                                         scene.flamenco_render_job_type,
                                         settings,
-                                        'Render %s' % filepath.name,
+                                        job_name,
                                         priority=scene.flamenco_render_job_priority,
                                         start_paused=scene.flamenco_start_paused)
         except Exception as ex:
@@ -414,6 +415,17 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             silently_quit_blender()
 
         self.quit()
+
+    def _make_job_name(self, filepath: Path) -> str:
+        """Turn a file to render into the render job name."""
+
+        job_name = filepath.name
+        if job_name.endswith('.blend'):
+            job_name = job_name[:-6]
+        if job_name.endswith('.flamenco'):
+            job_name = job_name[:-9]
+
+        return job_name
 
     def validate_job_settings(self, context, settings: dict) -> bool:
         """Perform settings validations for the selected job type.
