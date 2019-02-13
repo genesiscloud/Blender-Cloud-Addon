@@ -410,7 +410,7 @@ class BlenderCloudPreferences(AddonPreferences):
         projects = bcp.available_projects
         project = bcp.project
         if bcp.status in {'NONE', 'IDLE'}:
-            if not projects or not project:
+            if not projects:
                 row_buttons.operator('pillar.projects',
                                      text='Find project to load',
                                      icon='FILE_REFRESH')
