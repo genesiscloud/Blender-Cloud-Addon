@@ -3,7 +3,7 @@
 lockfile==0.12.2
 pillarsdk==1.7.0
 wheel==0.29.0
-blender-asset-tracer>=0.9
+blender-asset-tracer>=0.99
 
 # Secondary requirements:
 asn1crypto==0.24.0
