@@ -9,7 +9,7 @@ import typing
 
 import bpy
 from blender_asset_tracer import pack
-from blender_asset_tracer.pack import progress, transfer
+from blender_asset_tracer.pack import progress, transfer, shaman
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +19,8 @@ _packer_lock = threading.RLock()
 # For using in other parts of the add-on, so only this file imports BAT.
 Aborted = pack.Aborted
 FileTransferError = transfer.FileTransferError
+ShamanPacker = shaman.ShamanPacker
+parse_shaman_endpoint = shaman.parse_endpoint
 
 
 class BatProgress(progress.Callback):
@@ -63,8 +65,8 @@ class BatProgress(progress.Callback):
         else:
             self._txt('Pack of %s done' % output_blendfile.name)
 
-    def pack_aborted(self):
-        self._txt('Aborted')
+    def pack_aborted(self, reason: str):
+        self._txt('Aborted: %s' % reason)
         self._status('ABORTED')
 
     def trace_blendfile(self, filename: pathlib.Path) -> None:

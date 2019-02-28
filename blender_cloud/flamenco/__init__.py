@@ -69,6 +69,8 @@ VIDEO_CONTAINER_TO_EXTENSION = {
     'FLASH': '.flv',
 }
 
+SHAMAN_URL_SCHEMES = {'shaman://', 'shaman+http://', 'shaman+https://'}
+
 
 def scene_sample_count(scene) -> int:
     """Determine nr of render samples for this scene."""
@@ -548,6 +550,34 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
         relative_only = prefs.flamenco_relative_only
 
         self.log.debug('projdir: %s', projdir)
+
+        if any(prefs.flamenco_job_file_path.startswith(scheme) for scheme in SHAMAN_URL_SCHEMES):
+            endpoint, _ = bat_interface.parse_shaman_endpoint(prefs.flamenco_job_file_path)
+            self.log.info('Sending BAT pack to Shaman at %s', endpoint)
+            try:
+                outfile, missing_sources = await bat_interface.copy(
+                    bpy.context, filepath, projdir, '/', exclusion_filter,
+                    packer_class=bat_interface.ShamanPacker,
+                    relative_only=relative_only,
+                    endpoint=endpoint,
+                    checkout_id=job_id,
+                )
+            except bat_interface.FileTransferError as ex:
+                self.log.error('Could not transfer %d files, starting with %s',
+                               len(ex.files_remaining), ex.files_remaining[0])
+                self.report({'ERROR'}, 'Unable to transfer %d files' % len(ex.files_remaining))
+                self.quit()
+                return None, None, []
+            except bat_interface.Aborted:
+                self.log.warning('BAT Pack was aborted')
+                self.report({'WARNING'}, 'Aborted Flamenco file packing/transferring')
+                self.quit()
+                return None, None, []
+
+            bpy.context.window_manager.flamenco_status = 'DONE'
+            outfile = PurePath('{shaman}') / outfile
+            return None, outfile, missing_sources
+
         # Create a unique directory that is still more or less identifyable.
         # This should work better than a random ID.
         unique_dir = '%s-%s-%s' % (datetime.now().isoformat('-').replace(':', ''),
