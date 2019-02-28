@@ -32,6 +32,8 @@ class Manager(List, Find):
         Tries to find platform-specific path prefixes, and replaces them with
         variables.
         """
+        assert isinstance(some_path, pathlib.PurePath), \
+            'some_path should be a PurePath, not %r' % some_path
 
         for varname, path in self._sorted_path_replacements():
             replacement = self.PurePlatformPath(path)
@@ -52,3 +54,15 @@ class Job(List, Find, Create):
     """
     path = 'flamenco/jobs'
     ensure_query_projections = {'project': 1}
+
+    def patch(self, payload: dict, api=None):
+        import pillarsdk.utils
+        import json
+
+        api = api or self.api
+
+        url = pillarsdk.utils.join_url(self.path, str(self['_id']))
+        headers = pillarsdk.utils.merge_dict(self.http_headers(),
+                                             {'Content-Type': 'application/json'})
+        response = api.patch(url, payload, headers=headers)
+        return response

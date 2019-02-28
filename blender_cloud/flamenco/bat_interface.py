@@ -96,10 +96,13 @@ class BatProgress(progress.Callback):
 async def copy(context,
                base_blendfile: pathlib.Path,
                project: pathlib.Path,
-               target: pathlib.Path,
+               target: str,
                exclusion_filter: str,
                *,
-               relative_only: bool) -> typing.Tuple[pathlib.Path, typing.Set[pathlib.Path]]:
+               relative_only: bool,
+               packer_class=pack.Packer,
+               **packer_args) \
+        -> typing.Tuple[pathlib.Path, typing.Set[pathlib.Path]]:
     """Use BAT🦇 to copy the given file and dependencies to the target location.
 
     :raises: FileTransferError if a file couldn't be transferred.
@@ -108,11 +111,11 @@ async def copy(context,
     global _running_packer
 
     loop = asyncio.get_event_loop()
-
     wm = bpy.context.window_manager
 
-    with pack.Packer(base_blendfile, project, target, compress=True, relative_only=relative_only) \
-            as packer:
+    packer = packer_class(base_blendfile, project, target,
+                          compress=True, relative_only=relative_only, **packer_args)
+    with packer:
         with _packer_lock:
             if exclusion_filter:
                 # There was a mistake in an older version of the property tooltip,

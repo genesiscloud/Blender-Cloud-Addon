@@ -323,15 +323,8 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             self.quit()
             return
 
-        # BAT-pack the files to the destination directory.
-        outdir, outfile, missing_sources = await self.bat_pack(filepath)
-        if not outfile:
-            return
-        settings['filepath'] = manager.replace_path(outfile)
-
         # Create the job at Flamenco Server.
         context.window_manager.flamenco_status = 'COMMUNICATING'
-
         project_id = prefs.project.project
         job_name = self._make_job_name(filepath)
         try:
@@ -356,7 +349,62 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             self.quit()
             return
 
-        # Store the job ID in a file in the output dir.
+        # BAT-pack the files to the destination directory.
+        job_id = job_info['_id']
+        outdir, outfile, missing_sources = await self.bat_pack(job_id, filepath)
+        if not outfile:
+            return
+
+        # Store the job ID in a file in the output dir, if we can.
+        # TODO: Make it possible to create this file first and then send it to BAT for packing.
+        if outdir is not None:
+            await self._create_jobinfo_json(
+                outdir, job_info, manager_id, project_id, missing_sources)
+
+        # Now that the files have been transfered, PATCH the job at the Manager
+        # to kick off the job compilation.
+        job_filepath = manager.replace_path(outfile)
+        self.log.info('Final file path: %s', job_filepath)
+        new_settings = {'filepath': job_filepath}
+        await self.compile_job(job_id, new_settings)
+
+        # We can now remove the local copy we made with bpy.ops.wm.save_as_mainfile().
+        # Strictly speaking we can already remove it after the BAT-pack, but it may come in
+        # handy in case of failures.
+        try:
+            self.log.info('Removing temporary file %s', filepath)
+            filepath.unlink()
+        except Exception as ex:
+            self.report({'ERROR'}, 'Unable to remove file: %s' % ex)
+            self.quit()
+            return
+
+        if prefs.flamenco_open_browser_after_submit:
+            import webbrowser
+            from urllib.parse import urljoin
+            from ..blender import PILLAR_WEB_SERVER_URL
+
+            url = urljoin(PILLAR_WEB_SERVER_URL, '/flamenco/jobs/%s/redir' % job_id)
+            webbrowser.open_new_tab(url)
+
+        # Do a final report.
+        if missing_sources:
+            names = (ms.name for ms in missing_sources)
+            self.report({'WARNING'}, 'Flamenco job created with missing files: %s' %
+                        '; '.join(names))
+        else:
+            self.report({'INFO'}, 'Flamenco job created.')
+
+        if self.quit_after_submit:
+            silently_quit_blender()
+
+        self.quit()
+
+    async def _create_jobinfo_json(self, outdir: Path, job_info: dict,
+                                   manager_id: str, project_id: str,
+                                   missing_sources: typing.List[Path]):
+        from ..blender import preferences
+        prefs = preferences()
         with open(str(outdir / 'jobinfo.json'), 'w', encoding='utf8') as outfile:
             import json
 
@@ -383,38 +431,6 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                 'flamenco_manager_settings': flamenco_manager_settings,
             }
             json.dump(info, outfile, sort_keys=True, indent=4, cls=utils.JSONEncoder)
-
-        # We can now remove the local copy we made with bpy.ops.wm.save_as_mainfile().
-        # Strictly speaking we can already remove it after the BAT-pack, but it may come in
-        # handy in case of failures.
-        try:
-            self.log.info('Removing temporary file %s', filepath)
-            filepath.unlink()
-        except Exception as ex:
-            self.report({'ERROR'}, 'Unable to remove file: %s' % ex)
-            self.quit()
-            return
-
-        if prefs.flamenco_open_browser_after_submit:
-            import webbrowser
-            from urllib.parse import urljoin
-            from ..blender import PILLAR_WEB_SERVER_URL
-
-            url = urljoin(PILLAR_WEB_SERVER_URL, '/flamenco/jobs/%s/redir' % job_info['_id'])
-            webbrowser.open_new_tab(url)
-
-        # Do a final report.
-        if missing_sources:
-            names = (ms.name for ms in missing_sources)
-            self.report({'WARNING'}, 'Flamenco job created with missing files: %s' %
-                        '; '.join(names))
-        else:
-            self.report({'INFO'}, 'Flamenco job created.')
-
-        if self.quit_after_submit:
-            silently_quit_blender()
-
-        self.quit()
 
     def _make_job_name(self, filepath: Path) -> str:
         """Turn a file to render into the render job name."""
@@ -505,15 +521,20 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         return filepath
 
-    async def bat_pack(self, filepath: Path) \
-            -> typing.Tuple[Path, typing.Optional[Path], typing.List[Path]]:
+    async def bat_pack(self, job_id: str, filepath: Path) \
+            -> typing.Tuple[typing.Optional[Path], typing.Optional[PurePath], typing.List[Path]]:
         """BAT-packs the blendfile to the destination directory.
 
         Returns the path of the destination blend file.
 
+        :param job_id: the job ID given to us by Flamenco Server.
         :param filepath: the blend file to pack (i.e. the current blend file)
-        :returns: the destination directory, the destination blend file or None
-            if there were errors BAT-packing, and a list of missing paths.
+        :returns: A tuple of:
+            - The destination directory, or None if it does not exist on a
+              locally-reachable filesystem (for example when sending files to
+              a Shaman server).
+            - The destination blend file, or None if there were errors BAT-packing,
+            - A list of missing paths.
         """
 
         from datetime import datetime
@@ -521,19 +542,20 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         prefs = preferences()
 
+        proj_abspath = bpy.path.abspath(prefs.cloud_project_local_path)
+        projdir = Path(proj_abspath).resolve()
+        exclusion_filter = (prefs.flamenco_exclude_filter or '').strip()
+        relative_only = prefs.flamenco_relative_only
+
+        self.log.debug('projdir: %s', projdir)
         # Create a unique directory that is still more or less identifyable.
         # This should work better than a random ID.
         unique_dir = '%s-%s-%s' % (datetime.now().isoformat('-').replace(':', ''),
                                    self.db_user['username'],
                                    filepath.stem)
         outdir = Path(prefs.flamenco_job_file_path) / unique_dir
-        proj_abspath = bpy.path.abspath(prefs.cloud_project_local_path)
-        projdir = Path(proj_abspath).resolve()
-        exclusion_filter = (prefs.flamenco_exclude_filter or '').strip()
-        relative_only = prefs.flamenco_relative_only
 
         self.log.debug('outdir : %s', outdir)
-        self.log.debug('projdir: %s', projdir)
 
         try:
             outdir.mkdir(parents=True)
@@ -561,6 +583,20 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         bpy.context.window_manager.flamenco_status = 'DONE'
         return outdir, outfile, missing_sources
+
+    async def compile_job(self, job_id: str, new_settings: dict) -> None:
+        """Request Flamenco Server to start compiling the job."""
+
+        payload = {
+            'op': 'construct',
+            'settings': new_settings,
+        }
+
+        from .sdk import Job
+        from ..pillar import pillar_call
+
+        job = Job({'_id': job_id})
+        await pillar_call(job.patch, payload, caching=False)
 
 
 def scene_frame_range(context) -> str:
@@ -744,7 +780,7 @@ async def create_job(user_id: str,
     from ..pillar import pillar_call
 
     job_attrs = {
-        'status': 'queued',
+        'status': 'waiting-for-files',
         'priority': priority,
         'name': job_name,
         'settings': job_settings,
