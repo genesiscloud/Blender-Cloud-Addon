@@ -1203,7 +1203,7 @@ def register():
 
     scene.flamenco_render_job_priority = IntProperty(
         name='Job Priority',
-        min=0,
+        min=1,
         default=50,
         max=100,
         description='Higher numbers mean higher priority'
