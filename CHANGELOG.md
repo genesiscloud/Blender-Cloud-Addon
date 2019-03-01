@@ -14,6 +14,7 @@
   walk away, and free up memory for when the same machine is part of the render farm).
 - Flamenco: Name render jobs just 'thefile' instead of 'Render thefile.flamenco.blend'.
   This makes the job overview on Flamenco Server cleaner.
+- Flamenco: support Shaman servers. See https://gitlab.com/blender-institute/shaman for more info.
 
 
 ## Version 1.11.1 (2019-01-04)
