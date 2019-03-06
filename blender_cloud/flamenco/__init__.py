@@ -459,8 +459,9 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                 self.report({'ERROR'}, 'Job type requires chunks of at least 10 frames.')
                 return False
 
-            if settings['output_file_extension'] != '.mkv':
-                self.report({'ERROR'}, 'Job type requires rendering to Matroska files.')
+            if settings['output_file_extension'] not in {'.mkv', '.mp4', '.mov'}:
+                self.report({'ERROR'}, 'Job type requires rendering to Matroska or '
+                                       'MP4 files, not %r.' % settings['output_file_extension'])
                 return False
 
         return True
