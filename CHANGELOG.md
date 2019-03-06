@@ -15,6 +15,7 @@
 - Flamenco: Name render jobs just 'thefile' instead of 'Render thefile.flamenco.blend'.
   This makes the job overview on Flamenco Server cleaner.
 - Flamenco: support Shaman servers. See https://gitlab.com/blender-institute/shaman for more info.
+- Flamenco: The 'blender-video-chunks' job type now also allows MP4 and MOV video containers.
 
 
 ## Version 1.11.1 (2019-01-04)
