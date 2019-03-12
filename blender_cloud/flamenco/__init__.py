@@ -301,7 +301,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             samples = scene_sample_count(scene)
             settings['cycles_sample_cap'] = scene.flamenco_render_chunk_sample_cap
             settings['cycles_sample_count'] = samples
-            settings['format'] = 'EXR'
+            settings['format'] = 'OPEN_EXR'
 
         # Let Flamenco Server know whether we'll output images or video.
         output_format = settings.get('format') or scene.render.image_settings.file_format
