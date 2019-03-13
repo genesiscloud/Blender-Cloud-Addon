@@ -26,8 +26,9 @@ from contextlib import closing, contextmanager
 import urllib.parse
 import pathlib
 
-import requests
+import requests.adapters
 import requests.structures
+import urllib3.util.retry
 import pillarsdk
 import pillarsdk.exceptions
 import pillarsdk.utils
@@ -42,7 +43,16 @@ RFC1123_DATE_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
 
 _pillar_api = {}  # will become a mapping from bool (cached/non-cached) to pillarsdk.Api objects.
 log = logging.getLogger(__name__)
+
+_retries = urllib3.util.retry.Retry(
+    total=10,
+    backoff_factor=0.05,
+)
+_http_adapter = requests.adapters.HTTPAdapter(max_retries=_retries)
 uncached_session = requests.session()
+uncached_session.mount('https://', _http_adapter)
+uncached_session.mount('http://', _http_adapter)
+
 _testing_blender_id_profile = None  # Just for testing, overrides what is returned by blender_id_profile.
 _downloaded_urls = set()  # URLs we've downloaded this Blender session.
 
