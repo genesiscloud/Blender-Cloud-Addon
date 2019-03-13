@@ -129,7 +129,12 @@ def silently_quit_blender():
         # Backward compatibility with Blender < 2.80
         prefs = bpy.context.user_preferences
 
-    prefs.view.use_quit_dialog = False
+    try:
+        prefs.view.use_save_prompt = False
+    except AttributeError:
+        # Backward compatibility with Blender < 2.80
+        prefs.view.use_quit_dialog = False
+
     bpy.ops.wm.quit_blender()
 
 
