@@ -6,6 +6,7 @@ import pathlib
 import re
 import threading
 import typing
+import urllib.parse
 
 import bpy
 from blender_asset_tracer import pack
@@ -19,7 +20,6 @@ _packer_lock = threading.RLock()
 # For using in other parts of the add-on, so only this file imports BAT.
 Aborted = pack.Aborted
 FileTransferError = transfer.FileTransferError
-ShamanPacker = shaman.ShamanPacker
 parse_shaman_endpoint = shaman.parse_endpoint
 
 
@@ -93,6 +93,36 @@ class BatProgress(progress.Callback):
     def missing_file(self, filename: pathlib.Path) -> None:
         # TODO(Sybren): report missing files in a nice way
         pass
+
+
+class ShamanPacker(shaman.ShamanPacker):
+    """Packer with support for getting an auth token from Flamenco Server."""
+
+    def __init__(self,
+                 bfile: pathlib.Path,
+                 project: pathlib.Path,
+                 target: str,
+                 endpoint: str,
+                 checkout_id: str,
+                 *,
+                 manager_id: str,
+                 **kwargs) -> None:
+        self.manager_id = manager_id
+        super().__init__(bfile, project, target, endpoint, checkout_id, **kwargs)
+
+    def _get_auth_token(self) -> str:
+        """get a token from Flamenco Server"""
+
+        from ..blender import PILLAR_SERVER_URL
+        from ..pillar import blender_id_subclient, uncached_session, SUBCLIENT_ID
+
+        url = urllib.parse.urljoin(PILLAR_SERVER_URL,
+                                   'flamenco/jwt/generate-token/%s' % self.manager_id)
+        auth_token = blender_id_subclient()['token']
+
+        resp = uncached_session.get(url, auth=(auth_token, SUBCLIENT_ID))
+        resp.raise_for_status()
+        return resp.text
 
 
 async def copy(context,

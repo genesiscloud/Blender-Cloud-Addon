@@ -567,6 +567,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                     relative_only=relative_only,
                     endpoint=endpoint,
                     checkout_id=job_id,
+                    manager_id=prefs.flamenco_manager.manager,
                 )
             except bat_interface.FileTransferError as ex:
                 self.log.error('Could not transfer %d files, starting with %s',
