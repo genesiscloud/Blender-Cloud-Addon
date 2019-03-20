@@ -27,8 +27,8 @@ import urllib.parse
 import pathlib
 
 import requests.adapters
+import requests.packages.urllib3.util.retry
 import requests.structures
-import urllib3.util.retry
 import pillarsdk
 import pillarsdk.exceptions
 import pillarsdk.utils
@@ -44,7 +44,7 @@ RFC1123_DATE_FORMAT = '%a, %d %b %Y %H:%M:%S GMT'
 _pillar_api = {}  # will become a mapping from bool (cached/non-cached) to pillarsdk.Api objects.
 log = logging.getLogger(__name__)
 
-_retries = urllib3.util.retry.Retry(
+_retries = requests.packages.urllib3.util.retry.Retry(
     total=10,
     backoff_factor=0.05,
 )
