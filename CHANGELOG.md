@@ -1,6 +1,6 @@
 # Blender Cloud changelog
 
-## Version 1.12 (in development)
+## Version 1.12 (2019-03-25)
 
 - Flamenco: Change how progressive render tasks are created. Instead of the artist setting a fixed
   number of sample chunks, they can now set a maximum number of samples for each render task.
@@ -14,7 +14,8 @@
   walk away, and free up memory for when the same machine is part of the render farm).
 - Flamenco: Name render jobs just 'thefile' instead of 'Render thefile.flamenco.blend'.
   This makes the job overview on Flamenco Server cleaner.
-- Flamenco: support Shaman servers. See https://gitlab.com/blender-institute/shaman for more info.
+- Flamenco: support Shaman servers. See https://www.flamenco.io/docs/user_manual/shaman/
+  for more info.
 - Flamenco: The 'blender-video-chunks' job type now also allows MP4 and MOV video containers.
 
 
