@@ -199,18 +199,26 @@ class FLAMENCO_OT_fmanagers(async_loop.AsyncModalOperatorMixin,
         from ..blender import preferences
 
         prefs = preferences()
+        mypref = self.mypref
 
         self.log.info('Going to fetch managers for user %s', self.user_id)
 
-        self.mypref.status = 'FETCHING'
+        mypref.status = 'FETCHING'
         params = {'where': '{"projects" : "%s"}' % prefs.project.project}
         managers = await pillar_call(Manager.all, params)
 
         # We need to convert to regular dicts before storing in ID properties.
         # Also don't store more properties than we need.
-        as_list = [{'_id': p['_id'], 'name': p['name']} for p in managers['_items']]
+        as_list = [{'_id': man['_id'], 'name': man['name']}
+                   for man in managers['_items']]
 
-        self.mypref.available_managers = as_list
+        current_manager = mypref.manager
+        mypref.available_managers = as_list
+
+        # Prevent warnings about the current manager not being in the EnumProperty items.
+        if as_list and not any(man['_id'] == current_manager for man in as_list):
+            mypref.manager = as_list[0]['_id']
+
         self.quit()
 
     def quit(self):

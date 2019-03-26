@@ -114,7 +114,7 @@ def handle_project_update(_=None, _2=None):
             except TypeError:
                 log.warning('manager %s for this project could not be found', flamenco_manager_id)
         elif prefs.flamenco_manager.available_managers:
-            prefs.flamenco_manager.manager = prefs.flamenco_manager.available_managers[0]
+            prefs.flamenco_manager.manager = prefs.flamenco_manager.available_managers[0]['_id']
 
 
 def store(_=None, _2=None):

@@ -416,11 +416,20 @@ class PILLAR_OT_sync(pillar.PillarOperatorMixin,
         bss = bpy.context.window_manager.blender_sync_status
         bss.available_blender_versions = versions
 
-        if versions:
+        if not versions:
             # There are versions to sync, so we can remove the status message.
             # However, if there aren't any, the status message shows why, and
             # shouldn't be erased.
-            self.bss_report({'INFO'}, '')
+            return
+
+        # Prevent warnings that the current value of the EnumProperty isn't valid.
+        current_version = '%d.%d' % bpy.app.version[:2]
+        if current_version in versions:
+            bss.version = current_version
+        else:
+            bss.version = versions[0]
+
+        self.bss_report({'INFO'}, '')
 
     async def download_settings_file(self, fname: str, temp_dir: str):
         config_dir = pathlib.Path(bpy.utils.user_resource('CONFIG'))

@@ -383,18 +383,17 @@ class BlenderCloudPreferences(AddonPreferences):
                           icon='TRIA_UP').action = 'PUSH'
 
         versions = bss.available_blender_versions
-        version = bss.version
         if bss.status in {'NONE', 'IDLE'}:
-            if not versions or not version:
+            if not versions:
                 row_pull.operator('pillar.sync',
                                   text='Find version to load',
                                   icon='TRIA_DOWN').action = 'REFRESH'
             else:
                 props = row_pull.operator('pillar.sync',
-                                          text='Load %s settings' % version,
+                                          text='Load %s settings' % bss.version,
                                           icon='TRIA_DOWN')
                 props.action = 'PULL'
-                props.blender_version = version
+                props.blender_version = bss.version
                 row_pull.operator('pillar.sync',
                                   text='',
                                   icon=SYNC_SELECT_VERSION_ICON).action = 'SELECT'
@@ -450,7 +449,7 @@ class BlenderCloudPreferences(AddonPreferences):
         manager_box = manager_split.row(align=True)
 
         if bcp.status in {'NONE', 'IDLE'}:
-            if not bcp.available_managers or not bcp.manager:
+            if not bcp.available_managers:
                 manager_box.operator('flamenco.managers',
                                      text='Find Flamenco Managers',
                                      icon='FILE_REFRESH')
