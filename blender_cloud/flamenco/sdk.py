@@ -96,7 +96,6 @@ class Job(List, Find, Create):
 
     def patch(self, payload: dict, api=None):
         import pillarsdk.utils
-        import json
 
         api = api or self.api
 
