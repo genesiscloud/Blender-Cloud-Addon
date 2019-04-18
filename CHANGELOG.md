@@ -1,5 +1,10 @@
 # Blender Cloud changelog
 
+## Version 1.13 (in development)
+
+- Upgraded BAT to 1.1.1 for a compatibility fix with Blender 2.79
+
+
 ## Version 1.12 (2019-03-25)
 
 - Flamenco: Change how progressive render tasks are created. Instead of the artist setting a fixed
