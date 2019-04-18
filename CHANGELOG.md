@@ -3,6 +3,9 @@
 ## Version 1.13 (in development)
 
 - Upgraded BAT to 1.1.1 for a compatibility fix with Blender 2.79
+- Flamenco: Support for Flamenco Manager settings versioning + for settings version 2.
+  When using Blender Cloud Add-on 1.12 or older, Flamenco Server will automatically convert the
+  Manager settings to version 1.
 
 
 ## Version 1.12 (2019-03-25)

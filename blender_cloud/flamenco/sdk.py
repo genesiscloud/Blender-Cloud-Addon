@@ -1,5 +1,6 @@
 import functools
 import pathlib
+import typing
 
 from pillarsdk.resource import List, Find, Create
 
@@ -9,8 +10,19 @@ class Manager(List, Find):
     path = 'flamenco/managers'
     PurePlatformPath = pathlib.PurePath
 
-    @functools.lru_cache()
-    def _sorted_path_replacements(self) -> list:
+    @functools.lru_cache(maxsize=1)
+    def _path_replacements(self) -> list:
+        """Defer to _path_replacements_vN() to get path replacement vars."""
+        settings_version = self.settings_version or 1
+        try:
+            settings_func = getattr(self, '_path_replacements_v%d' % settings_version)
+        except AttributeError:
+            raise RuntimeError('This manager has unsupported settings version %d; '
+                               'upgrade Blender Cloud add-on')
+
+        return settings_func()
+
+    def _path_replacements_v1(self) -> typing.List[typing.Tuple[str, str]]:
         import platform
 
         if self.path_replacement is None:
@@ -18,13 +30,34 @@ class Manager(List, Find):
 
         items = self.path_replacement.to_dict().items()
 
-        def by_length(item):
-            return -len(item[1]), item[1]
-
         this_platform = platform.system().lower()
         return [(varname, platform_replacements[this_platform])
-                for varname, platform_replacements in sorted(items, key=by_length)
+                for varname, platform_replacements in items
                 if this_platform in platform_replacements]
+
+    def _path_replacements_v2(self) -> typing.List[typing.Tuple[str, str]]:
+        import platform
+
+        if not self.variables:
+            return []
+
+        this_platform = platform.system().lower()
+        audiences = {'users', 'all'}
+
+        replacements = []
+        for var_name, variable in self.variables.to_dict().items():
+            # Path replacement requires bidirectional variables.
+            if variable.get('direction') != 'two':
+                continue
+
+            for var_value in variable.get('values', []):
+                if var_value.get('audience') not in audiences:
+                    continue
+                if var_value.get('platform', '').lower() != this_platform:
+                    continue
+
+                replacements.append((var_name, var_value.get('value')))
+        return replacements
 
     def replace_path(self, some_path: pathlib.PurePath) -> str:
         """Performs path variable replacement.
@@ -35,7 +68,13 @@ class Manager(List, Find):
         assert isinstance(some_path, pathlib.PurePath), \
             'some_path should be a PurePath, not %r' % some_path
 
-        for varname, path in self._sorted_path_replacements():
+        def by_length(item):
+            return -len(item[1]), item[1]
+
+        replacements = self._path_replacements()
+        replacements.sort(key=by_length)
+
+        for varname, path in replacements:
             replacement = self.PurePlatformPath(path)
             try:
                 relpath = some_path.relative_to(replacement)
