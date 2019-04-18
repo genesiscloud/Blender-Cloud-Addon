@@ -19,7 +19,7 @@ class Manager(List, Find):
         items = self.path_replacement.to_dict().items()
 
         def by_length(item):
-            return -len(item[0]), item[0]
+            return -len(item[1]), item[1]
 
         this_platform = platform.system().lower()
         return [(varname, platform_replacements[this_platform])
