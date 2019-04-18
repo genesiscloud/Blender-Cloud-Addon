@@ -47,7 +47,7 @@ class Manager(List, Find):
         replacements = []
         for var_name, variable in self.variables.to_dict().items():
             # Path replacement requires bidirectional variables.
-            if variable.get('direction') != 'two':
+            if variable.get('direction') != 'twoway':
                 continue
 
             for var_value in variable.get('values', []):
