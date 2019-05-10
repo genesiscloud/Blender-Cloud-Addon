@@ -12,7 +12,10 @@ class Manager(List, Find):
 
     @functools.lru_cache(maxsize=1)
     def _path_replacements(self) -> list:
-        """Defer to _path_replacements_vN() to get path replacement vars."""
+        """Defer to _path_replacements_vN() to get path replacement vars.
+
+        Returns a list of tuples (variable name, variable value).
+        """
         settings_version = self.settings_version or 1
         try:
             settings_func = getattr(self, '_path_replacements_v%d' % settings_version)
@@ -20,7 +23,13 @@ class Manager(List, Find):
             raise RuntimeError('This manager has unsupported settings version %d; '
                                'upgrade Blender Cloud add-on')
 
-        return settings_func()
+        def longest_value_first(item):
+            var_name, var_value = item
+            return -len(var_value), var_value, var_name
+
+        replacements = settings_func()
+        replacements.sort(key=longest_value_first)
+        return replacements
 
     def _path_replacements_v1(self) -> typing.List[typing.Tuple[str, str]]:
         import platform
@@ -67,12 +76,6 @@ class Manager(List, Find):
         """
         assert isinstance(some_path, pathlib.PurePath), \
             'some_path should be a PurePath, not %r' % some_path
-
-        def by_length(item):
-            return -len(item[1]), item[1]
-
-        replacements = self._path_replacements()
-        replacements.sort(key=by_length)
 
         for varname, path in replacements:
             replacement = self.PurePlatformPath(path)
