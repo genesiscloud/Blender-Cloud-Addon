@@ -1023,7 +1023,12 @@ def register():
         name="Status")
     bpy.types.Sequence.atc_order = bpy.props.IntProperty(name="Order")
 
-    bpy.types.SEQUENCER_PT_edit.append(draw_strip_movie_meta)
+    try:
+        panel = bpy.types.SEQUENCER_PT_info_input
+    except AttributeError:
+        # Blender 2.79 and older:
+        panel = bpy.types.SEQUENCER_PT_edit
+    panel.append(draw_strip_movie_meta)
 
     for cls in _rna_classes:
         bpy.utils.register_class(cls)
