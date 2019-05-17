@@ -88,3 +88,8 @@ def aabox_with_texture(v1: Float2, v2: Float2):
 def bind_texture(texture: bpy.types.Image):
     """Bind a Blender image to a GL texture slot."""
     bgl.glBindTexture(bgl.GL_TEXTURE_2D, texture.bindcode[0])
+
+
+def load_texture(texture: bpy.types.Image) -> int:
+    """Load the texture, return OpenGL error code."""
+    return texture.gl_load(filter=bgl.GL_NEAREST, mag=bgl.GL_NEAREST)

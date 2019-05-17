@@ -105,3 +105,8 @@ def bind_texture(texture: bpy.types.Image):
     """Bind a Blender image to a GL texture slot."""
     bgl.glActiveTexture(bgl.GL_TEXTURE0)
     bgl.glBindTexture(bgl.GL_TEXTURE_2D, texture.bindcode)
+
+
+def load_texture(texture: bpy.types.Image) -> int:
+    """Load the texture, return OpenGL error code."""
+    return texture.gl_load()

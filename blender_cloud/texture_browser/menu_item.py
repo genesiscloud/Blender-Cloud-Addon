@@ -164,7 +164,7 @@ class MenuItem:
 
         texture = self.icon
         if texture:
-            err = texture.gl_load(filter=bgl.GL_NEAREST, mag=bgl.GL_NEAREST)
+            err = draw.load_texture(texture)
             assert not err, 'OpenGL error: %i' % err
 
         # ------ TEXTURE ---------#
