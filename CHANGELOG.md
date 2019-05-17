@@ -1,6 +1,6 @@
 # Blender Cloud changelog
 
-## Version 1.13 (in development)
+## Version 1.13 (2019-04-18)
 
 - Upgraded BAT to 1.1.1 for a compatibility fix with Blender 2.79
 - Flamenco: Support for Flamenco Manager settings versioning + for settings version 2.
