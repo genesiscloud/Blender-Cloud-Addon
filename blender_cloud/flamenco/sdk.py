@@ -77,7 +77,7 @@ class Manager(List, Find):
         assert isinstance(some_path, pathlib.PurePath), \
             'some_path should be a PurePath, not %r' % some_path
 
-        for varname, path in replacements:
+        for varname, path in self._path_replacements():
             replacement = self.PurePlatformPath(path)
             try:
                 relpath = some_path.relative_to(replacement)
