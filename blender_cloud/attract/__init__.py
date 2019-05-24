@@ -63,6 +63,7 @@ from pillarsdk.projects import Project
 from pillarsdk import exceptions as sdk_exceptions
 
 from bpy.types import Operator, Panel, AddonPreferences
+import bl_ui.space_sequencer
 
 log = logging.getLogger(__name__)
 
@@ -946,25 +947,31 @@ class ATTRACT_OT_project_open_in_browser(Operator):
         return {'FINISHED'}
 
 
-def draw_strip_movie_meta(self, context):
-    strip = active_strip(context)
-    if not strip:
-        return
+class ATTRACT_PT_strip_metadata(bl_ui.space_sequencer.SequencerButtonsPanel, Panel):
+    bl_label = "Metadata"
+    bl_parent_id = "SEQUENCER_PT_data"
+    bl_category = "Strip"
+    bl_options = {'DEFAULT_CLOSED'}
 
-    meta = strip.get('metadata', None)
-    if not meta:
-        return None
+    def draw(self, context):
+        strip = active_strip(context)
+        if not strip:
+            return
 
-    box = self.layout.column(align=True)
-    row = box.row(align=True)
-    fname = meta.get('BLEND_FILE', None) or None
-    if fname:
-        row.label(text='Original Blendfile: %s' % fname)
-        row.operator(ATTRACT_OT_open_meta_blendfile.bl_idname,
-                     text='', icon='FILE_BLEND')
-    sfra = meta.get('START_FRAME', '?')
-    efra = meta.get('END_FRAME', '?')
-    box.label(text='Original Frame Range: %s-%s' % (sfra, efra))
+        meta = strip.get('metadata', None)
+        if not meta:
+            return None
+
+        box = self.layout.column(align=True)
+        row = box.row(align=True)
+        fname = meta.get('BLEND_FILE', None) or None
+        if fname:
+            row.label(text='Original Blendfile: %s' % fname)
+            row.operator(ATTRACT_OT_open_meta_blendfile.bl_idname,
+                         text='', icon='FILE_BLEND')
+        sfra = meta.get('START_FRAME', '?')
+        efra = meta.get('END_FRAME', '?')
+        box.label(text='Original Frame Range: %s-%s' % (sfra, efra))
 
 
 def activate():
@@ -1022,13 +1029,6 @@ def register():
         ],
         name="Status")
     bpy.types.Sequence.atc_order = bpy.props.IntProperty(name="Order")
-
-    try:
-        panel = bpy.types.SEQUENCER_PT_info_input
-    except AttributeError:
-        # Blender 2.79 and older:
-        panel = bpy.types.SEQUENCER_PT_edit
-    panel.append(draw_strip_movie_meta)
 
     for cls in _rna_classes:
         bpy.utils.register_class(cls)
