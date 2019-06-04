@@ -6,6 +6,7 @@
 - Flamenco: Support for Flamenco Manager settings versioning + for settings version 2.
   When using Blender Cloud Add-on 1.12 or older, Flamenco Server will automatically convert the
   Manager settings to version 1.
+- More Blender 2.80 compatibility fixes
 
 
 ## Version 1.12 (2019-03-25)

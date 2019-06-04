@@ -949,7 +949,7 @@ class ATTRACT_OT_project_open_in_browser(Operator):
 
 class ATTRACT_PT_strip_metadata(bl_ui.space_sequencer.SequencerButtonsPanel, Panel):
     bl_label = "Metadata"
-    bl_parent_id = "SEQUENCER_PT_data"
+    bl_parent_id = "SEQUENCER_PT_info"
     bl_category = "Strip"
     bl_options = {'DEFAULT_CLOSED'}
 
