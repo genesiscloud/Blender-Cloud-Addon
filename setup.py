@@ -23,7 +23,6 @@ import shutil
 import subprocess
 import re
 import pathlib
-import pip
 import zipfile
 
 from distutils import log
@@ -122,8 +121,9 @@ class BuildWheels(Command):
 
     def download_wheel(self, requirement):
         """Downloads a wheel from PyPI and saves it in self.wheels_path."""
-        pip.main([
-            'download',
+
+        subprocess.check_call([
+            'pip', 'download',
             '--no-deps',
             '--dest', str(self.wheels_path),
             requirement[0]
