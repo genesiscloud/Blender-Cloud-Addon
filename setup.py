@@ -123,8 +123,8 @@ class BuildWheels(Command):
         """Downloads a wheel from PyPI and saves it in self.wheels_path."""
 
         subprocess.check_call([
-            'pip', 'download',
-            '--no-deps',
+            sys.executable, '-m', 'pip',
+            'download', '--no-deps',
             '--dest', str(self.wheels_path),
             requirement[0]
         ])
