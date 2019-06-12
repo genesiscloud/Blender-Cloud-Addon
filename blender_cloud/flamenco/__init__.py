@@ -435,7 +435,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
             # Pop out some settings so that settings of irrelevant Managers are excluded.
             flamenco_managers_settings = project_settings.pop('flamenco_managers_settings', {})
-            flamenco_manager_settings = flamenco_managers_settings.pop(manager_id)
+            flamenco_manager_settings = flamenco_managers_settings.pop(manager_id, '-unknown-')
 
             info = {
                 '_meta': {'version': 2},
