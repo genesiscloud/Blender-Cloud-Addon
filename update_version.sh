@@ -19,4 +19,4 @@ echo git commit -m \'Bumped version to $VERSION\' setup.py blender_cloud/__init_
 echo git tag -a version-$VERSION -m \'Tagged version $VERSION\'
 echo
 echo "To build a distribution ZIP:"
-echo python setup.py bdist
+echo python3 setup.py bdist
