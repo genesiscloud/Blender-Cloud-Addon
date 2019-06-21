@@ -640,8 +640,7 @@ class ATTRACT_OT_open_meta_blendfile(AttractOperatorMixin, Operator):
 
     @classmethod
     def poll(cls, context):
-        return AttractOperatorMixin.poll(context) and \
-               bool(any(cls.filename_from_metadata(s) for s in context.selected_sequences))
+        return bool(any(cls.filename_from_metadata(s) for s in context.selected_sequences))
 
     @staticmethod
     def filename_from_metadata(strip):
