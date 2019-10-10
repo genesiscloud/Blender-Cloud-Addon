@@ -30,7 +30,7 @@ from bpy.types import AddonPreferences, Operator, WindowManager, Scene, Property
 from bpy.props import StringProperty, EnumProperty, PointerProperty, BoolProperty, IntProperty
 import rna_prop_ui
 
-from . import pillar, async_loop, flamenco, project_specific
+from . import compatibility, pillar, async_loop, flamenco, project_specific
 from .utils import pyside_cache, redraw
 
 PILLAR_WEB_SERVER_URL = os.environ.get('BCLOUD_SERVER', 'https://cloud.blender.org/')
@@ -39,23 +39,6 @@ PILLAR_SERVER_URL = '%sapi/' % PILLAR_WEB_SERVER_URL
 ADDON_NAME = 'blender_cloud'
 log = logging.getLogger(__name__)
 icons = None
-
-if bpy.app.version < (2, 80):
-    SYNC_SELECT_VERSION_ICON = 'DOTSDOWN'
-else:
-    SYNC_SELECT_VERSION_ICON = 'DOWNARROW_HLT'
-
-
-@functools.lru_cache()
-def factor(factor: float) -> dict:
-    """Construct keyword argument for UILayout.split().
-
-    On Blender 2.8 this returns {'factor': factor}, and on earlier Blenders it returns
-    {'percentage': factor}.
-    """
-    if bpy.app.version < (2, 80, 0):
-        return {'percentage': factor}
-    return {'factor': factor}
 
 
 @pyside_cache('version')
@@ -69,6 +52,7 @@ def blender_syncable_versions(self, context):
     return [(v, v, '') for v in versions]
 
 
+@compatibility.convert_properties
 class SyncStatusProperties(PropertyGroup):
     status = EnumProperty(
         items=[
@@ -156,6 +140,7 @@ def project_extensions(project_id) -> set:
     return set(proj.get('enabled_for', ()))
 
 
+@compatibility.convert_properties
 class BlenderCloudProjectGroup(PropertyGroup):
     status = EnumProperty(
         items=[
@@ -185,6 +170,7 @@ class BlenderCloudProjectGroup(PropertyGroup):
         project_specific.handle_project_update()
 
 
+@compatibility.convert_properties
 class BlenderCloudPreferences(AddonPreferences):
     bl_idname = ADDON_NAME
 
@@ -331,7 +317,7 @@ class BlenderCloudPreferences(AddonPreferences):
         bss = context.window_manager.blender_sync_status
         bsync_box = layout.box()
         bsync_box.enabled = msg_icon != 'ERROR'
-        row = bsync_box.row().split(**factor(0.33))
+        row = bsync_box.row().split(**compatibility.factor(0.33))
         row.label(text='Blender Sync with Blender Cloud', icon_value=icon('CLOUD'))
 
         icon_for_level = {
@@ -374,7 +360,7 @@ class BlenderCloudPreferences(AddonPreferences):
         layout.enabled = bss.status in {'NONE', 'IDLE'}
 
         buttons = layout.column()
-        row_buttons = buttons.row().split(**factor(0.5))
+        row_buttons = buttons.row().split(**compatibility.factor(0.5))
         row_push = row_buttons.row()
         row_pull = row_buttons.row(align=True)
 
@@ -396,7 +382,7 @@ class BlenderCloudPreferences(AddonPreferences):
                 props.blender_version = bss.version
                 row_pull.operator('pillar.sync',
                                   text='',
-                                  icon=SYNC_SELECT_VERSION_ICON).action = 'SELECT'
+                                  icon=compatibility.SYNC_SELECT_VERSION_ICON).action = 'SELECT'
         else:
             row_pull.label(text='Cloud Sync is running.')
 
@@ -444,7 +430,7 @@ class BlenderCloudPreferences(AddonPreferences):
         header_row = flamenco_box.row(align=True)
         header_row.label(text='Flamenco:', icon_value=icon('CLOUD'))
 
-        manager_split = flamenco_box.split(**factor(0.32), align=True)
+        manager_split = flamenco_box.split(**compatibility.factor(0.32), align=True)
         manager_split.label(text='Manager:')
         manager_box = manager_split.row(align=True)
 
@@ -461,7 +447,7 @@ class BlenderCloudPreferences(AddonPreferences):
         else:
             manager_box.label(text='Fetching available managers.')
 
-        path_split = flamenco_box.split(**factor(0.32), align=True)
+        path_split = flamenco_box.split(**compatibility.factor(0.32), align=True)
         path_split.label(text='Job File Path:')
         path_box = path_split.row(align=True)
         path_box.prop(self, 'flamenco_job_file_path', text='')
@@ -469,7 +455,7 @@ class BlenderCloudPreferences(AddonPreferences):
         props.path = self.flamenco_job_file_path
 
         job_output_box = flamenco_box.column(align=True)
-        path_split = job_output_box.split(**factor(0.32), align=True)
+        path_split = job_output_box.split(**compatibility.factor(0.32), align=True)
         path_split.label(text='Job Output Path:')
         path_box = path_split.row(align=True)
         path_box.prop(self, 'flamenco_job_output_path', text='')
@@ -477,7 +463,7 @@ class BlenderCloudPreferences(AddonPreferences):
         props.path = self.flamenco_job_output_path
         job_output_box.prop(self, 'flamenco_exclude_filter')
 
-        prop_split = job_output_box.split(**factor(0.32), align=True)
+        prop_split = job_output_box.split(**compatibility.factor(0.32), align=True)
         prop_split.label(text='Strip Components:')
         prop_split.prop(self, 'flamenco_job_output_strip_components', text='')
 
@@ -561,6 +547,7 @@ class PILLAR_OT_subscribe(Operator):
         return {'FINISHED'}
 
 
+@compatibility.convert_properties
 class PILLAR_OT_project_open_in_browser(Operator):
     bl_idname = 'pillar.project_open_in_browser'
     bl_label = 'Open in Browser'

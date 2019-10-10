@@ -35,7 +35,7 @@ import asyncio
 import pillarsdk
 from pillarsdk import exceptions as sdk_exceptions
 from .pillar import pillar_call
-from . import async_loop, blender, pillar, cache, blendfile, home_project
+from . import async_loop, blender, compatibility, pillar, cache, blendfile, home_project
 
 SETTINGS_FILES_TO_UPLOAD = ['userpref.blend', 'startup.blend']
 
@@ -196,6 +196,7 @@ async def available_blender_versions(home_project_id: str, user_id: str) -> list
 
 
 # noinspection PyAttributeOutsideInit
+@compatibility.convert_properties
 class PILLAR_OT_sync(pillar.PillarOperatorMixin,
                      async_loop.AsyncModalOperatorMixin,
                      bpy.types.Operator):

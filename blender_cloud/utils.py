@@ -94,7 +94,10 @@ def pyside_cache(propname):
                 result = wrapped(self, context)
                 return result
             finally:
-                rna_type, rna_info = getattr(self.bl_rna, propname)
+                try:
+                    rna_type, rna_info = self.bl_rna.__annotations__[propname]
+                except AttributeError:
+                    rna_type, rna_info = getattr(self.bl_rna, propname)
                 rna_info['_cached_result'] = result
         return wrapper
     return decorator

@@ -26,7 +26,7 @@ import bpy
 import bgl
 
 import pillarsdk
-from .. import async_loop, pillar, cache, blender, utils
+from .. import async_loop, compatibility, pillar, cache, blender, utils
 from . import menu_item as menu_item_mod  # so that we can have menu items called 'menu_item'
 from . import nodes
 
@@ -648,6 +648,7 @@ class BlenderCloudBrowser(pillar.PillarOperatorMixin,
         self.scroll_offset_target = self.scroll_offset = 0
 
 
+@compatibility.convert_properties
 class PILLAR_OT_switch_hdri(pillar.PillarOperatorMixin,
                             async_loop.AsyncModalOperatorMixin,
                             bpy.types.Operator):
@@ -776,7 +777,7 @@ def _hdri_download_panel(self, current_image):
                     current_image.name)
         return
 
-    row = self.layout.row(align=True).split(**blender.factor(0.3))
+    row = self.layout.row(align=True).split(**compatibility.factor(0.3))
     row.label(text='HDRi', icon_value=blender.icon('CLOUD'))
     row.prop(current_image, 'hdri_variation', text='')
 

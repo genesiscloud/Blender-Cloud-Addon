@@ -34,12 +34,13 @@ if "bpy" in locals():
         bat_interface = importlib.reload(bat_interface)
         sdk = importlib.reload(sdk)
         blender = importlib.reload(blender)
+        compatibility = importlib.reload(compatibility)
     except NameError:
         from . import bat_interface, sdk
-        from .. import blender
+        from .. import blender, compatibility
 else:
     from . import bat_interface, sdk
-    from .. import blender
+    from .. import blender, compatibility
 
 import bpy
 from bpy.types import AddonPreferences, Operator, WindowManager, Scene, PropertyGroup
@@ -138,6 +139,7 @@ def silently_quit_blender():
     bpy.ops.wm.quit_blender()
 
 
+@compatibility.convert_properties
 class FlamencoManagerGroup(PropertyGroup):
     manager = EnumProperty(
         items=available_managers,
@@ -238,6 +240,7 @@ def guess_output_file_extension(output_format: str, scene) -> str:
         return '.' + container.lower()
 
 
+@compatibility.convert_properties
 class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                          pillar.AuthenticatedPillarOperatorMixin,
                          FlamencoPollMixin,
@@ -729,6 +732,7 @@ class FLAMENCO_OT_abort(Operator, FlamencoPollMixin):
         return {'FINISHED'}
 
 
+@compatibility.convert_properties
 class FLAMENCO_OT_explore_file_path(FlamencoPollMixin,
                                     Operator):
     """Opens the Flamenco job storage path in a file explorer.
@@ -796,6 +800,7 @@ class FLAMENCO_OT_disable_output_path_override(Operator):
         return {'FINISHED'}
 
 
+@compatibility.convert_properties
 class FLAMENCO_OT_set_recommended_sample_cap(Operator):
     bl_idname = 'flamenco.set_recommended_sample_cap'
     bl_label = 'Set Recommended Maximum Sample Count'
@@ -962,7 +967,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
 
         prefs = preferences()
 
-        labeled_row = layout.split(**blender.factor(0.25), align=True)
+        labeled_row = layout.split(**compatibility.factor(0.25), align=True)
         labeled_row.label(text='Manager:')
         prop_btn_row = labeled_row.row(align=True)
 
@@ -980,7 +985,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         else:
             prop_btn_row.label(text='Fetching available managers.')
 
-        labeled_row = layout.split(**blender.factor(0.25), align=True)
+        labeled_row = layout.split(**compatibility.factor(0.25), align=True)
         labeled_row.label(text='Job Type:')
         labeled_row.prop(context.scene, 'flamenco_render_job_type', text='')
 
@@ -1005,7 +1010,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
             sample_count = scene_sample_count(context.scene)
             recommended_cap = sample_count // 4
 
-            split = box.split(**blender.factor(0.4))
+            split = box.split(**compatibility.factor(0.4))
             split.label(text='Total Sample Count: %d' % sample_count)
             props = split.operator('flamenco.set_recommended_sample_cap',
                                    text='Recommended Max Samples per Task: %d' % recommended_cap)
@@ -1019,7 +1024,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         else:
             box.prop(context.scene, 'flamenco_render_fchunk_size')
 
-        labeled_row = layout.split(**blender.factor(0.25), align=True)
+        labeled_row = layout.split(**compatibility.factor(0.25), align=True)
         labeled_row.label(text='Frame Range:')
         prop_btn_row = labeled_row.row(align=True)
         prop_btn_row.prop(context.scene, 'flamenco_render_frame_range', text='')
@@ -1030,7 +1035,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
 
         paths_layout = layout.column(align=True)
 
-        labeled_row = paths_layout.split(**blender.factor(0.25), align=True)
+        labeled_row = paths_layout.split(**compatibility.factor(0.25), align=True)
         labeled_row.label(text='Storage:')
         prop_btn_row = labeled_row.row(align=True)
         prop_btn_row.label(text=prefs.flamenco_job_file_path)
@@ -1043,7 +1048,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
             paths_layout.label(text='Unable to render with Flamenco, outside of project directory.')
             return
 
-        labeled_row = paths_layout.split(**blender.factor(0.25), align=True)
+        labeled_row = paths_layout.split(**compatibility.factor(0.25), align=True)
         labeled_row.label(text='Output:')
         prop_btn_row = labeled_row.row(align=True)
 
@@ -1062,7 +1067,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         props.path = str(render_output.parent)
 
         if context.scene.flamenco_do_override_output_path:
-            labeled_row = paths_layout.split(**blender.factor(0.25), align=True)
+            labeled_row = paths_layout.split(**compatibility.factor(0.25), align=True)
             labeled_row.label(text='Effective Output Path:')
             labeled_row.label(text=str(render_output))
 
@@ -1072,7 +1077,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         flamenco_status = context.window_manager.flamenco_status
         if flamenco_status in {'IDLE', 'ABORTED', 'DONE'}:
             if prefs.flamenco_show_quit_after_submit_button:
-                ui = layout.split(**blender.factor(0.75), align=True)
+                ui = layout.split(**compatibility.factor(0.75), align=True)
             else:
                 ui = layout
             ui.operator(FLAMENCO_OT_render.bl_idname,

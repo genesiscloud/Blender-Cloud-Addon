@@ -47,6 +47,7 @@ if "bpy" in locals():
     pillar = importlib.reload(pillar)
     async_loop = importlib.reload(async_loop)
     blender = importlib.reload(blender)
+    compatibility = importlib.reload(compatibility)
 else:
     import bpy
 
@@ -54,7 +55,7 @@ else:
         from . import draw_27 as draw
     else:
         from . import draw
-    from .. import pillar, async_loop, blender
+    from .. import pillar, async_loop, blender, compatibility
 
 import bpy
 import pillarsdk
@@ -252,7 +253,7 @@ class ATTRACT_PT_tools(AttractPollMixin, Panel):
                          icon='RENDER_STILL')
 
             # Group more dangerous operations.
-            dangerous_sub = layout.split(**blender.factor(0.6), align=True)
+            dangerous_sub = layout.split(**compatibility.factor(0.6), align=True)
             dangerous_sub.operator('attract.strip_unlink',
                                    text='Unlink %s' % noun,
                                    icon='PANEL_CLOSE')
@@ -408,6 +409,7 @@ class ATTRACT_OT_shot_fetch_update(AttractOperatorMixin, Operator):
         return {'FINISHED'}
 
 
+@compatibility.convert_properties
 class ATTRACT_OT_shot_relink(AttractOperatorMixin, Operator):
     bl_idname = "attract.shot_relink"
     bl_label = "Relink With Attract"
@@ -477,6 +479,7 @@ class ATTRACT_OT_shot_open_in_browser(AttractOperatorMixin, Operator):
         return {'FINISHED'}
 
 
+@compatibility.convert_properties
 class ATTRACT_OT_shot_delete(AttractOperatorMixin, Operator):
     bl_idname = 'attract.shot_delete'
     bl_label = 'Delete Shot'
@@ -915,6 +918,7 @@ class ATTRACT_OT_copy_id_to_clipboard(AttractOperatorMixin, Operator):
         return {'FINISHED'}
 
 
+@compatibility.convert_properties
 class ATTRACT_OT_project_open_in_browser(Operator):
     bl_idname = 'attract.project_open_in_browser'
     bl_label = 'Open Project in Browser'

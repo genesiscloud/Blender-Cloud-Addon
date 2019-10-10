@@ -25,7 +25,7 @@ import bpy
 import pillarsdk
 from pillarsdk import exceptions as sdk_exceptions
 from .pillar import pillar_call
-from . import async_loop, pillar, home_project, blender
+from . import async_loop, compatibility, pillar, home_project, blender
 
 REQUIRES_ROLES_FOR_IMAGE_SHARING = {'subscriber', 'demo'}
 IMAGE_SHARING_GROUP_NODE_NAME = 'Image sharing'
@@ -53,6 +53,7 @@ async def find_image_sharing_group_id(home_project_id, user_id):
     return share_group['_id']
 
 
+@compatibility.convert_properties
 class PILLAR_OT_image_share(pillar.PillarOperatorMixin,
                             async_loop.AsyncModalOperatorMixin,
                             bpy.types.Operator):
