@@ -1,5 +1,12 @@
 # Blender Cloud changelog
 
+## Version 1.14 (2019-10-10)
+
+- Upgraded BAT to 1.2 for missing smoke caches, compatibility with Blender 2.81, and some
+  Windows-specific fixes.
+- Removed warnings on the terminal when running Blender 2.80+
+
+
 ## Version 1.13 (2019-04-18)
 
 - Upgraded BAT to 1.1.1 for a compatibility fix with Blender 2.79
