@@ -240,6 +240,23 @@ def guess_output_file_extension(output_format: str, scene) -> str:
         return '.' + container.lower()
 
 
+def is_file_inside_job_storage(prefs, current_file: Path) -> bool:
+    """Check whether current blend file is inside the storage path.
+
+    :return: True when 'current_file' is inside the Flamenco
+        job storage directory already. In this case it won't be
+        BAT-packed, as it's assumed the job storage dir is
+        accessible by the workers already.
+    """
+    flamenco_job_file_path = Path(prefs.flamenco_job_file_path).absolute().resolve()
+    current_file = current_file.absolute().resolve()
+    try:
+        current_file.relative_to(flamenco_job_file_path)
+    except ValueError:
+        return False
+    return True
+
+
 @compatibility.convert_properties
 class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
                          pillar.AuthenticatedPillarOperatorMixin,
@@ -595,6 +612,11 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
             bpy.context.window_manager.flamenco_status = 'DONE'
             outfile = PurePath('{shaman}') / outfile
             return None, outfile, missing_sources
+
+        if is_file_inside_job_storage(prefs, filepath):
+            # The blend file is contained in the job storage path, no need to copy anything.
+            # Since BAT doesn't run, we also don't know whether files are missing.
+            return filepath.parent, filepath, []
 
         # Create a unique directory that is still more or less identifyable.
         # This should work better than a random ID.
@@ -1042,6 +1064,12 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         props = prop_btn_row.operator(FLAMENCO_OT_explore_file_path.bl_idname,
                                       text='', icon='DISK_DRIVE')
         props.path = prefs.flamenco_job_file_path
+
+
+        if is_file_inside_job_storage(prefs, Path(context.blend_data.filepath)):
+            # File is contained in the job storage path, no need to copy anything.
+            paths_layout.label(text='Current file already in job storage path; '
+                                'not going to create BAT pack.')
 
         render_output = render_output_path(context)
         if render_output is None:
