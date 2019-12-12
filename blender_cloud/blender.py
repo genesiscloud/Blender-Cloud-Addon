@@ -243,7 +243,7 @@ class BlenderCloudPreferences(AddonPreferences):
         name='Relative Paths Only',
         description='When enabled, only assets that are referred to with a relative path are '
                     'packed, and assets referred to by an absolute path are excluded from the '
-                    'BAT pack. When disabled, all assets are packed.',
+                    'BAT pack. When disabled, all assets are packed',
         default=False,
         update=project_specific.store,
     )
