@@ -1,6 +1,6 @@
 # Blender Cloud changelog
 
-## Version 1.15 (in development)
+## Version 1.15 (2019-12-12)
 
 - Avoid creating BAT pack when the to-be-rendered file is already inside the job storage
   directory. This assumes that the paths are already correct for the Flamenco Workers.
