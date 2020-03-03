@@ -240,7 +240,17 @@ def guess_output_file_extension(output_format: str, scene) -> str:
         return '.' + container.lower()
 
 
-def is_file_inside_job_storage(prefs, current_file: Path) -> bool:
+def is_shaman_url(path_or_url: str) -> bool:
+    """Check whether the given string is a Shaman URL.
+
+    :param path_or_url: A string that may represent a filesystem path or a URL.
+        May not be a pathlib.Path, as that would break URL notation on Windows.
+    """
+    assert isinstance(path_or_url, str)
+    return any(path_or_url.startswith(scheme) for scheme in SHAMAN_URL_SCHEMES)
+
+
+def is_file_inside_job_storage(prefs, current_file: typing.Union[str, Path]) -> bool:
     """Check whether current blend file is inside the storage path.
 
     :return: True when 'current_file' is inside the Flamenco
@@ -248,6 +258,13 @@ def is_file_inside_job_storage(prefs, current_file: Path) -> bool:
         BAT-packed, as it's assumed the job storage dir is
         accessible by the workers already.
     """
+
+    if isinstance(current_file, str):
+        # Shaman URLs are always remote, so the current file cannot be in there.
+        if is_shaman_url(current_file):
+            return False
+        current_file = Path(current_file)
+
     flamenco_job_file_path = Path(prefs.flamenco_job_file_path).absolute().resolve()
     current_file = current_file.absolute().resolve()
     try:
@@ -585,7 +602,7 @@ class FLAMENCO_OT_render(async_loop.AsyncModalOperatorMixin,
 
         self.log.debug('projdir: %s', projdir)
 
-        if any(prefs.flamenco_job_file_path.startswith(scheme) for scheme in SHAMAN_URL_SCHEMES):
+        if is_shaman_url(prefs.flamenco_job_file_path):
             endpoint, _ = bat_interface.parse_shaman_endpoint(prefs.flamenco_job_file_path)
             self.log.info('Sending BAT pack to Shaman at %s', endpoint)
             try:
@@ -1066,7 +1083,7 @@ class FLAMENCO_PT_render(bpy.types.Panel, FlamencoPollMixin):
         props.path = prefs.flamenco_job_file_path
 
 
-        if is_file_inside_job_storage(prefs, Path(context.blend_data.filepath)):
+        if is_file_inside_job_storage(prefs, context.blend_data.filepath):
             # File is contained in the job storage path, no need to copy anything.
             paths_layout.label(text='Current file already in job storage path; '
                                 'not going to create BAT pack.')

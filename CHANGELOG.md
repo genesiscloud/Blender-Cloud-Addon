@@ -1,5 +1,10 @@
 # Blender Cloud changelog
 
+## Version 1.16 (2020-03-03)
+
+- Fixed Windows compatibility issue with the handling of Shaman URLs.
+
+
 ## Version 1.15 (2019-12-12)
 
 - Avoid creating BAT pack when the to-be-rendered file is already inside the job storage
