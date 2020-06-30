@@ -8,7 +8,7 @@ blender-asset-tracer==1.2.1
 # Secondary requirements:
 asn1crypto==0.24.0
 cffi==1.11.2
-cryptography==2.1.4
+cryptography==2.3
 idna==2.6
 pyasn1==0.1.9
 pycparser==2.18
